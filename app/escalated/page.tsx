@@ -1,10 +1,14 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api, fmt } from '@/lib/api';
-import { Badge, Panel } from '@/components/ui';
+import { api } from '@/lib/api';
+import { Reveal, Chip, CountUp, Button } from '@/components/ui';
+import { ContourField, RecessionLoader } from '@/components/marks';
 
-export default function EscalatedList() {
+const fdate = (s?: string) =>
+  s ? new Date(s).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
+export default function CasesPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -12,54 +16,94 @@ export default function EscalatedList() {
     setItems((await api('/api/escalations')).escalations);
     setLoaded(true);
   }, []);
+  const analyzing = items.some((e) => e.status === 'analyzing');
+  useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    load();
-    const t = setInterval(load, 5000);
+    if (!analyzing) return;
+    const t = setInterval(load, 4000);
     return () => clearInterval(t);
-  }, [load]);
+  }, [analyzing, load]);
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-6 space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold">Escalated springs</h1>
-        <p className="text-sm text-[var(--muted)]">
-          Springs the agent flagged for a sustained decline. Each one gets a deep analysis:
-          then-vs-now satellite comparison of its recharge area, a topographic estimate of where its
-          water comes from, and live rainfall — then a ranked, uncertainty-aware explanation.
-        </p>
-      </div>
+    <div className="mx-auto max-w-[1000px] px-6 py-12">
+      <header className="relative">
+        <ContourField className="absolute -top-4 -left-6 right-0 h-32 text-[var(--water)] opacity-[0.06] pointer-events-none" />
+        <div className="relative">
+          <div className="eyebrow">Open cases</div>
+          <h1 className="display-xl mt-2">Springs under investigation</h1>
+          <p className="measure mt-4 text-[0.95rem] leading-relaxed text-[var(--text-2)]">
+            Each spring the agent escalated for a sustained decline. Every case is worked the same
+            way — the source area traced from terrain, the recharge area compared then and now by
+            satellite, and 25 years of rainfall — ending in a ranked, uncertainty-aware finding.
+          </p>
+        </div>
+      </header>
 
-      {loaded && items.length === 0 && (
-        <Panel><div className="text-sm text-[var(--muted)]">Nothing escalated yet. Run a monitoring scan on the Signals page.</div></Panel>
-      )}
+      <div className="mt-10 space-y-4">
+        {!loaded && <div className="py-16"><RecessionLoader label="loading cases" /></div>}
 
-      <div className="space-y-3">
-        {items.map((e) => (
-          <Link key={e.id} href={`/escalated/${e.id}`}>
-            <Panel className="hover:border-sky-500/40">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <div className="font-medium">{e.sensor?.name ?? e.sensor_id} <span className="text-xs text-[var(--muted)] mono">{e.sensor_id}</span></div>
-                  <div className="text-xs text-[var(--muted)]">{e.sensor?.village} · escalated {fmt.date(e.created_at)}</div>
-                </div>
-                <Badge tone={e.status === 'complete' ? 'green' : e.status === 'error' ? 'red' : 'amber'}>
-                  {e.status === 'analyzing' ? 'analysing…' : e.status}
-                </Badge>
-              </div>
-              {e.status === 'complete' && (
-                <div className="mt-2 text-sm">
-                  <span className="text-[var(--muted)]">Most likely cause: </span>{e.primary_cause ?? '—'}
-                  <div className="mt-1 flex gap-3 text-xs text-[var(--muted)]">
-                    <span>rainfall {e.rainfall_anomaly_pct != null ? `${e.rainfall_anomaly_pct > 0 ? '+' : ''}${e.rainfall_anomaly_pct}%` : '—'}</span>
-                    <span>NDVI {e.ndvi_change_pct != null ? `${e.ndvi_change_pct > 0 ? '+' : ''}${e.ndvi_change_pct}%` : '—'}</span>
-                    <span>built-up {e.builtup_change_pp != null ? `${e.builtup_change_pp > 0 ? '+' : ''}${e.builtup_change_pp}pp` : '—'}</span>
+        {loaded && items.length === 0 && (
+          <div className="text-center py-20 border border-dashed border-[var(--hairline-2)] rounded-2xl">
+            <p className="display-m text-[var(--text-2)]">No springs under investigation.</p>
+            <p className="text-[0.85rem] text-[var(--text-3)] mt-2">The watch log is quiet.</p>
+            <Button variant="ghost" href="/signals" className="mt-6">Run a monitoring scan</Button>
+          </div>
+        )}
+
+        {items.map((e, i) => (
+          <Reveal key={e.id} delay={i * 0.05}>
+            <Link href={`/escalated/${e.id}`} className="block group">
+              <article className="relative overflow-hidden card px-5 sm:px-7 py-6 transition-all duration-300 group-hover:border-[var(--water-a40)] group-hover:-translate-y-0.5">
+                {e.status === 'analyzing' && <div className="scan-line" />}
+                <div className="relative flex items-start justify-between gap-6 flex-wrap">
+                  <div>
+                    <h2 className="display-m text-[var(--text)]">{e.sensor?.name ?? e.sensor_id}</h2>
+                    <p className="font-mono text-[0.75rem] text-[var(--text-3)] mt-1">
+                      {e.sensor_id} · {e.sensor?.village} · opened {fdate(e.created_at)}
+                    </p>
                   </div>
+                  <Chip tone={e.status === 'complete' ? 'moss' : e.status === 'error' ? 'clay' : 'water'} dot>
+                    {e.status === 'analyzing' ? 'analysing' : e.status}
+                  </Chip>
                 </div>
-              )}
-              {e.status === 'error' && <div className="mt-2 text-xs text-rose-300">{e.error}</div>}
-            </Panel>
-          </Link>
+
+                {e.status === 'complete' && (
+                  <div className="relative mt-5 grid sm:grid-cols-[1.4fr_1fr] gap-x-8 gap-y-4">
+                    <div>
+                      <div className="eyebrow">Most likely cause</div>
+                      <p className="text-[0.95rem] text-[var(--text)] mt-1 leading-snug">{e.primary_cause ?? '—'}</p>
+                    </div>
+                    <div className="flex gap-5">
+                      <MiniStat label="rainfall" value={e.rainfall_anomaly_pct} unit="%" />
+                      <MiniStat label="NDVI" value={e.ndvi_change_pct} unit="%" />
+                      <MiniStat label="built-up" value={e.builtup_change_pp} unit="pp" />
+                    </div>
+                  </div>
+                )}
+                {e.status === 'analyzing' && (
+                  <p className="relative mt-4 text-[0.83rem] text-[var(--water-bright)]">
+                    Fetching satellite imagery, tracing the catchment, reading rainfall…
+                  </p>
+                )}
+                {e.status === 'error' && (
+                  <p className="relative mt-4 text-[0.83rem] text-[var(--clay-bright)]">{e.error}</p>
+                )}
+              </article>
+            </Link>
+          </Reveal>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, unit }: { label: string; value: number | null; unit: string }) {
+  const bad = value != null && ((unit === '%' && label !== 'built-up' && value < -5) || (label === 'built-up' && value > 2) || (label === 'rainfall' && value < -10));
+  return (
+    <div>
+      <div className="eyebrow">{label}</div>
+      <div className={`font-mono text-[0.9rem] tnum mt-0.5 ${bad ? 'text-[var(--clay-bright)]' : 'text-[var(--text-2)]'}`}>
+        {value == null ? '—' : <><CountUp to={value} decimals={1} prefix={value > 0 ? '+' : ''} />{unit}</>}
       </div>
     </div>
   );

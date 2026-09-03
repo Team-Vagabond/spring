@@ -1,33 +1,40 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import 'leaflet/dist/leaflet.css';
 import './globals.css';
+import { SiteHeader } from '@/components/SiteHeader';
+
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  axes: ['opsz', 'SOFT'],
+  display: 'swap',
+  variable: '--font-fraunces',
+});
+const plexSans = IBM_Plex_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-plex-sans',
+});
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  display: 'swap',
+  variable: '--font-plex-mono',
+});
 
 export const metadata: Metadata = {
-  title: 'Spring Sentinel',
-  description: 'Autonomous spring monitoring & investigation — Darchula, Nepal',
+  title: 'Naula — spring investigation',
+  description:
+    'Naula watches mountain springs in Darchula, Nepal, and investigates why the ones that are quietly failing are failing.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <header className="border-b border-[var(--border)] bg-[var(--panel)]">
-          <div className="mx-auto max-w-6xl px-5 h-14 flex items-center gap-6">
-            <Link href="/" className="font-semibold tracking-tight">
-              <span className="text-[var(--accent)]">◈</span> Spring Sentinel
-            </Link>
-            <nav className="flex gap-5 text-sm text-[var(--muted)]">
-              <Link href="/" className="hover:text-[var(--text)]">Map</Link>
-              <Link href="/signals" className="hover:text-[var(--text)]">Signals</Link>
-              <Link href="/escalated" className="hover:text-[var(--text)]">Escalated springs</Link>
-            </nav>
-            <span className="ml-auto text-[11px] text-[var(--muted)] hidden sm:block">
-              flow readings simulated · rainfall &amp; satellite live
-            </span>
-          </div>
-        </header>
-        {children}
+    <html lang="en" className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable}`}>
+      <body className="min-h-screen">
+        <SiteHeader />
+        <div className="pt-[52px]">{children}</div>
       </body>
     </html>
   );

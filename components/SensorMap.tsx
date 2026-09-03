@@ -1,95 +1,91 @@
 'use client';
-import { MapContainer, TileLayer, CircleMarker, Popup, LayersControl, useMap } from 'react-leaflet';
-import { useEffect } from 'react';
-import Link from 'next/link';
+import { MapContainer, TileLayer, CircleMarker, Tooltip, LayersControl, useMap } from 'react-leaflet';
+import { useEffect, useMemo, useRef } from 'react';
+import { type MapSensor, statusOf, STATUS_COLOR } from '@/lib/sensor-status';
 
-function FitBounds({ points }: { points: [number, number][] }) {
+const DARCHULA: [number, number] = [29.74, 80.58];
+
+function MapController({
+  bounds,
+  focusKey,
+  focusPos,
+}: {
+  bounds: [number, number][];
+  focusKey: string | null;
+  focusPos: [number, number] | null;
+}) {
   const map = useMap();
+  const didFit = useRef(false);
+
+  // fit to the whole network exactly once
   useEffect(() => {
-    if (points.length) map.fitBounds(points as any, { padding: [50, 50], maxZoom: 13 });
-  }, [map, points]);
+    if (didFit.current || bounds.length === 0) return;
+    map.fitBounds(bounds, { padding: [64, 64], maxZoom: 11.4 });
+    didFit.current = true;
+  }, [map, bounds]);
+
+  // fly only when the selected station actually changes
+  useEffect(() => {
+    if (focusPos) map.flyTo(focusPos, 13, { duration: 0.9 });
+  }, [map, focusKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return null;
 }
 
-export interface MapSensor {
-  id: string;
-  name: string;
-  village: string;
-  lat: number;
-  lng: number;
-  elevation_m: number;
-  active: boolean;
-  current_flow_lpm: number | null;
-  anomaly_pct: number | null;
-  signal?: { kind: string; decision: string } | null;
-  escalation?: { id: string; status: string } | null;
-}
+export function SensorMap({
+  sensors,
+  selected,
+  onSelect,
+}: {
+  sensors: MapSensor[];
+  selected: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const pts = useMemo(() => sensors.filter((s) => s.lat && s.lng), [sensors]);
+  const bounds = useMemo<[number, number][]>(() => pts.map((s) => [s.lat, s.lng]), [pts]);
+  const focus = selected ? pts.find((s) => s.id === selected) ?? null : null;
+  const focusPos: [number, number] | null = focus ? [focus.lat, focus.lng] : null;
 
-// Darchula district rough bounds
-const DARCHULA_CENTER: [number, number] = [29.75, 80.58];
-
-export function SensorMap({ sensors }: { sensors: MapSensor[] }) {
-  const pts = sensors.filter((s) => s.lat && s.lng);
   return (
-    <MapContainer
-      center={DARCHULA_CENTER}
-      zoom={11}
-      className="h-full w-full"
-      scrollWheelZoom
-    >
-      <LayersControl position="topright">
+    <MapContainer center={DARCHULA} zoom={11} zoomControl={false} className="w-full h-full" scrollWheelZoom>
+      <LayersControl position="bottomright">
         <LayersControl.BaseLayer checked name="Satellite">
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution="Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics"
+            attribution="Esri, Maxar, Earthstar Geographics"
             maxZoom={18}
           />
         </LayersControl.BaseLayer>
         <LayersControl.BaseLayer name="Terrain">
-          <TileLayer
-            url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenTopoMap (CC-BY-SA)"
-            maxZoom={17}
-          />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Streets">
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
-          />
+          <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" attribution="OpenTopoMap (CC-BY-SA)" maxZoom={17} />
         </LayersControl.BaseLayer>
       </LayersControl>
 
-      <FitBounds points={pts.map((s) => [s.lat, s.lng])} />
+      <MapController bounds={bounds} focusKey={selected} focusPos={focusPos} />
 
       {pts.map((s) => {
-        const color = !s.active ? '#94a3b8' : s.escalation ? '#fb7185' : s.signal?.decision === 'watching' ? '#fbbf24' : '#34d399';
+        const st = statusOf(s);
+        const color = STATUS_COLOR[st];
+        const active = selected === s.id;
         return (
           <CircleMarker
             key={s.id}
             center={[s.lat, s.lng]}
-            radius={9}
-            pathOptions={{ color: '#0b1220', weight: 2, fillColor: color, fillOpacity: 0.95 }}
+            radius={active ? 11 : st === 'escalated' ? 8 : 6.5}
+            pathOptions={{
+              color: active ? '#e9ede6' : '#04100f',
+              weight: active ? 2 : 1.5,
+              fillColor: color,
+              fillOpacity: st === 'inactive' ? 0.5 : 0.95,
+            }}
+            eventHandlers={{ click: () => onSelect(active ? null : s.id) }}
           >
-            <Popup>
-              <div className="text-sm">
-                <div className="font-semibold">{s.name}</div>
-                <div className="mono text-xs text-[var(--muted)]">{s.id} · {s.village}</div>
-                <div className="mt-1.5 space-y-0.5">
-                  <div>Status: <b style={{ color }}>{s.active ? 'active' : 'inactive'}</b></div>
-                  <div>Location: <span className="mono">{s.lat.toFixed(4)}, {s.lng.toFixed(4)}</span> · {s.elevation_m} m</div>
-                  <div>Flow: {s.current_flow_lpm != null ? `${s.current_flow_lpm.toFixed(2)} L/min` : '—'}
-                    {s.anomaly_pct != null && <span className="text-[var(--muted)]"> ({s.anomaly_pct > 0 ? '+' : ''}{s.anomaly_pct}% vs baseline)</span>}
-                  </div>
-                  {s.signal && <div>Latest signal: {s.signal.kind} · {s.signal.decision}</div>}
-                </div>
-                {s.escalation && (
-                  <Link href={`/escalated/${s.escalation.id}`} className="text-sky-400 underline text-xs">
-                    view escalation analysis →
-                  </Link>
-                )}
+            <Tooltip direction="top" offset={[0, -6]} opacity={1}>
+              <div className="font-mono text-[0.7rem]">
+                <span className="text-white">{s.name}</span>
+                <span className="text-[var(--text-3)]"> · {s.current_flow_lpm != null ? `${s.current_flow_lpm.toFixed(1)} L/min` : 'offline'}</span>
               </div>
-            </Popup>
+            </Tooltip>
           </CircleMarker>
         );
       })}

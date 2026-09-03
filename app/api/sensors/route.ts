@@ -15,6 +15,11 @@ export async function GET() {
     const current = series.length ? series[series.length - 1].discharge_l_min : null;
     const anomaly = current != null && s.active ? detectAnomaly(current, series, new Date()) : null;
 
+    // downsampled spark for the station rail (~24 points, most recent ~78 weeks)
+    const tail = series.slice(-78).map((p) => p.discharge_l_min);
+    const step = Math.max(1, Math.ceil(tail.length / 24));
+    const spark = tail.filter((_, idx) => idx % step === 0);
+
     const { data: latestSignal } = await admin
       .from('signals').select('kind, severity, decision, detected_at')
       .eq('sensor_id', s.id).order('detected_at', { ascending: false }).limit(1);
@@ -29,6 +34,7 @@ export async function GET() {
       current_flow_lpm: current,
       last_reading_ts: series.at(-1)?.ts ?? null,
       anomaly_pct: anomaly?.anomalyPct ?? null,
+      spark,
       signal: latestSignal?.[0] ?? null,
       escalation: openEsc?.[0] ?? null,
     });
