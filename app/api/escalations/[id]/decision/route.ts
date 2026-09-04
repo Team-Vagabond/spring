@@ -36,7 +36,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   // approve → the consequential action: the case is filed in the register
   const d = esc.dispatch ?? {};
-  const caseRef = d.case_ref ?? `NAULA-${esc.sensor_id}`;
+  const caseRef = d.case_ref ?? `MUL-${esc.sensor_id}`;
 
   trace.push({ t: at, kind: 'decision', actor: 'coordinator', content: `ACCEPTED by ${by}. Filing case ${caseRef} in the register.` });
   trace.push({

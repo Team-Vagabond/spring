@@ -1,4 +1,4 @@
-# Naula — pitch deck (8 slides)
+# Mul — pitch deck (8 slides)
 
 Structure is the brief's (§07). Eight is the ceiling. Spend a third of the six minutes on slide 4.
 
@@ -29,7 +29,7 @@ She is not "farmers in Nepal". She is one desk, findable, in every one of Nepal'
 
 ---
 
-## 3 · What Naula does, unasked
+## 3 · What Mul does, unasked
 
 > A scheduled sweep watches every sensor. The moment one crosses a sustained-decline
 > threshold, an agent investigates on its own — rainfall, the recharge area traced from
@@ -87,7 +87,7 @@ cron → sweep (DeepSeek-V4-Flash, 1 call/sensor, pure-code anomaly maths)
 > sensor is underwater and offline. The shared LLM key is rate-limited. Rainfall data is four
 > days stale.
 
-Naula:
+Mul:
 - sweep still runs (cheap model, deterministic fallback)
 - investigation routes **entirely** to the fallback model
 - offline sensor → **status UNKNOWN**, not "failed"

@@ -41,7 +41,7 @@ export function SiteHeader() {
       <div className="mx-auto max-w-[1440px] h-full px-4 sm:px-6 flex items-center gap-7">
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
           <Benchmark />
-          <span className="serif text-[1.35rem] font-medium tracking-tight text-[var(--ink)]">Naula</span>
+          <span className="serif text-[1.35rem] font-medium tracking-tight text-[var(--ink)]">Mul</span>
         </Link>
 
         <nav className="flex items-stretch h-full">

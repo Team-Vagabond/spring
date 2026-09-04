@@ -1,6 +1,6 @@
-# Naula — design system
+# Mul — design system
 
-**Concept: the case file.** Naula is not a dashboard, it's an investigator. The machine does
+**Concept: the case file.** Mul is not a dashboard, it's an investigator. The machine does
 its work in the dark (a telemetry console — green-black, mono, terrain), and hands the human a
 clean field report (warm paper, a natural-history plate for each piece of evidence). The tension
 between those two surfaces *is* the product.

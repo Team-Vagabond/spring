@@ -29,7 +29,7 @@ Written to be checkable against the source. File references are in `lib/`.
 |---|---|---|---|---|
 | The 6 sensor points | `lib/synthetic.ts` → `SENSOR_SEEDS` | hard-coded list | **SYNTHETIC** | I chose every coordinate, ID, and "installed" date. **No physical sensors exist.** |
 | Village names (Khalanga, Gokuleshwar, Marma, Latinath, Dattu, Sitola) | my general knowledge | — | REAL place names, **APPROXIMATE coordinates** | These are real settlements in Darchula district. Coordinates were **not** checked against OpenStreetMap or a gazetteer — they are "near that village", ±1–3 km. |
-| Spring names ("Khalanga Mul Dhara", "Marma Naula", …) | constructed | village name + a real word for a water source (*Dhara, Naula, Mul, Kuwa, Pandhero*) | **SYNTHETIC** | Plausible-sounding, **not documented springs**. |
+| Spring names ("Khalanga Mul Dhara", "Marma Mul", …) | constructed | village name + a real word for a water source (*Dhara, Mul, Mul, Kuwa, Pandhero*) | **SYNTHETIC** | Plausible-sounding, **not documented springs**. |
 | `elevation_m` on the sensor card | hand-typed in the seed list | — | **SYNTHETIC** (rough) | Approximate; not read from the DEM. |
 | `active` / `inactive` flag | hard-coded (`DRC-06` inactive) + `/api/sensors/[id]/toggle` | — | **SYNTHETIC** | — |
 

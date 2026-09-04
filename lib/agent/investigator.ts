@@ -24,7 +24,7 @@ export interface TraceEntry {
 }
 
 function systemPrompt(sensor: any, degraded: boolean): string {
-  return `You are Naula, an autonomous spring-investigation agent inside the spring-monitoring portal
+  return `You are Mul, an autonomous spring-investigation agent inside the spring-monitoring portal
 of a rural municipality (gaunpalika) in Darchula, Nepal. You work for the municipality's own
 water & sanitation desk and its ward offices — not a district or central authority.
 
@@ -47,8 +47,8 @@ HOW TO WORK
 4. If a tool fails, decide whether to retry or work around it. Do not give up on one failure.
 5. Stop gathering evidence when another test would not meaningfully change the ranking — not when
    you simply have "an answer". You are rewarded for reducing uncertainty honestly.
-6. When ready, call request_dispatch. That drafts the case and the SMS brief and STOPS for a human
-   to approve. You never send anything yourself.
+6. When ready, call request_dispatch. That drafts the case and STOPS for a person at the water
+   desk to accept it. You never file anything yourself.
 ${degraded ? '\nDEGRADED CONDITIONS: the sensor is offline, rainfall data is stale, and satellite imagery is unavailable. Do the best honest assessment you can, keep confidence LOW, and recommend a field visit rather than guessing a confident cause.\n' : ''}
 Keep each message to 2-3 sentences: what you now believe and what you will check next, then the tool call.`;
 }
@@ -123,7 +123,7 @@ export async function runInvestigation(
     if (forceGate) {
       messages.push({
         role: 'user',
-        content: 'Enough evidence has been gathered. Call request_dispatch now with your ranked causes, honest confidence, and the Nepali + English SMS brief.',
+        content: 'Enough evidence has been gathered. Call request_dispatch now with your ranked causes, honest confidence, explanation and uncertainty.',
       });
     }
 
@@ -247,7 +247,7 @@ export async function runInvestigation(
 
   // persist
   const d = ctx.dispatch ?? {};
-  const caseRef = `NAULA-${sensor.id}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+  const caseRef = `MUL-${sensor.id}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
   const recipients = [
     { label: `वडा कार्यालय, ${sensor.village} — खानेपानी हेर्ने कर्मचारी (Ward office — water focal person)`, number: '+9779800000000' },
     { label: 'नगरपालिका खानेपानी तथा सरसफाइ शाखा (Municipal water & sanitation section)', number: '+9779811111111' },

@@ -1,4 +1,4 @@
--- Naula v3 — additive migration (agent loop, trace, cost, human gate, SMS).
+-- Mul v3 — additive migration (agent loop, trace, cost, human gate, SMS).
 -- Safe to re-run. Does NOT drop existing tables / demo data.
 
 alter table escalations add column if not exists trigger_kind text default 'manual';   -- scheduled | threshold | manual

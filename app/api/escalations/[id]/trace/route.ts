@@ -12,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const hh = (t: string) => new Date(t).toISOString().slice(11, 19);
   const lines: string[] = [];
-  lines.push(`NAULA — AGENT TRACE`);
+  lines.push(`MUL — AGENT TRACE`);
   lines.push(`case            ${esc.dispatch?.case_ref ?? esc.id}`);
   lines.push(`spring          ${sensor?.name} (${esc.sensor_id}) · ${sensor?.village} · ${sensor?.elevation_m} m`);
   lines.push(`trigger         ${esc.trigger_kind}${esc.run_id ? ` · run ${esc.run_id}` : ''}`);

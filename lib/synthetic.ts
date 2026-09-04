@@ -21,7 +21,7 @@ export interface SensorSeed {
 export const SENSOR_SEEDS: SensorSeed[] = [
   { id: 'DRC-01', name: 'Khalanga Mul Dhara', village: 'Khalanga (Darchula HQ)', lat: 29.8420, lng: 80.5710, elevation_m: 1290, expected_flow_lpm: 6.5, scenario: 'declining', active: true, installed_on: '2023-04-12' },
   { id: 'DRC-02', name: 'Gokuleshwar Pandhero', village: 'Gokuleshwar', lat: 29.6842, lng: 80.6060, elevation_m: 1180, expected_flow_lpm: 5.2, scenario: 'stable', active: true, installed_on: '2023-05-03' },
-  { id: 'DRC-03', name: 'Marma Naula', village: 'Marma', lat: 29.7245, lng: 80.5360, elevation_m: 1720, expected_flow_lpm: 7.0, scenario: 'declining', active: true, installed_on: '2023-06-20' },
+  { id: 'DRC-03', name: 'Marma Mul', village: 'Marma', lat: 29.7245, lng: 80.5360, elevation_m: 1720, expected_flow_lpm: 7.0, scenario: 'declining', active: true, installed_on: '2023-06-20' },
   { id: 'DRC-04', name: 'Latinath Dhara', village: 'Latinath', lat: 29.7585, lng: 80.6120, elevation_m: 1610, expected_flow_lpm: 4.4, scenario: 'irregular', active: true, installed_on: '2024-02-11' },
   { id: 'DRC-05', name: 'Dattu Kuwa', village: 'Dattu', lat: 29.8030, lng: 80.5210, elevation_m: 1975, expected_flow_lpm: 8.1, scenario: 'recovering', active: true, installed_on: '2023-03-28' },
   { id: 'DRC-06', name: 'Sitola Mul', village: 'Sitola', lat: 29.6660, lng: 80.5560, elevation_m: 1425, expected_flow_lpm: 5.8, scenario: 'stable', active: false, installed_on: '2024-01-09' },

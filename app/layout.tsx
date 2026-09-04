@@ -9,7 +9,7 @@ const sans = Instrument_Sans({ subsets: ['latin'], weight: ['400', '500', '600',
 const mono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500'], display: 'swap', variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'Naula — spring monitoring for local government',
+  title: 'Mul — spring monitoring for local government',
   description:
     'The spring-monitoring portal for a rural municipality: watch every source, investigate the ones that are failing, decide what to do.',
 };

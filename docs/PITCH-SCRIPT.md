@@ -1,4 +1,4 @@
-# Naula — 6-minute pitch script + Q&A prep
+# Mul — 6-minute pitch script + Q&A prep
 
 One person drives (laptop, demo). One person talks. Rehearse twice against a clock.
 
@@ -22,9 +22,9 @@ visit. Right now she finds out from a complaint, months late, and she has no way
 the two hundred is worst. There's a desk exactly like Ranju's in every one of Nepal's 753 local
 governments."
 
-**[1:15 — 1:45] What Naula does**
+**[1:15 — 1:45] What Mul does**
 
-"Naula watches every sensor on a schedule. The moment one is genuinely declining — not a wet-week
+"Mul watches every sensor on a schedule. The moment one is genuinely declining — not a wet-week
 wobble, a real sustained drop — an agent investigates on its own. Rainfall. Where the water comes
 from, traced across the terrain. What's changed in that area, then versus now, by satellite. It
 weighs the possible causes against each other, and it hands Ranju a finished case with an SMS
@@ -58,7 +58,7 @@ causes actually compete. Every call is metered. Every step is logged."
 **[4:20 — 5:00] The bad day**
 
 "The week the rain doesn't stop. Cloud kills the satellite. The sensor's underwater. The key's
-rate-limited. Naula doesn't bluff. Sensor offline means *unknown*, not *failed*. It drops the
+rate-limited. Mul doesn't bluff. Sensor offline means *unknown*, not *failed*. It drops the
 satellite evidence, flags the stale rainfall, and because it genuinely can't tell rain from a
 broken pipe without a field visit, it writes a low-confidence case that says *go and look* — not
 a confident wrong answer. The SMS still drafts; it just waits. The handoff to a human is the
