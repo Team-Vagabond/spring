@@ -1,40 +1,25 @@
 import type { Metadata } from 'next';
-import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
+import { Source_Serif_4, Public_Sans, IBM_Plex_Mono } from 'next/font/google';
 import 'leaflet/dist/leaflet.css';
 import './globals.css';
 import { SiteHeader } from '@/components/SiteHeader';
 
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  axes: ['opsz', 'SOFT'],
-  display: 'swap',
-  variable: '--font-fraunces',
-});
-const plexSans = IBM_Plex_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  display: 'swap',
-  variable: '--font-plex-sans',
-});
-const plexMono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  display: 'swap',
-  variable: '--font-plex-mono',
-});
+const serif = Source_Serif_4({ subsets: ['latin'], weight: ['400', '500', '600'], style: ['normal', 'italic'], display: 'swap', variable: '--font-serif' });
+const sans = Public_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', variable: '--font-sans' });
+const mono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500'], display: 'swap', variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'Naula — spring investigation',
+  title: 'Naula — spring monitoring for local government',
   description:
-    'Naula watches mountain springs in Darchula, Nepal, and investigates why the ones that are quietly failing are failing.',
+    'The spring-monitoring portal for a rural municipality: watch every source, investigate the ones that are failing, decide what to do.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
       <body className="min-h-screen">
         <SiteHeader />
-        <div className="pt-[52px]">{children}</div>
+        <div className="pt-[54px]">{children}</div>
       </body>
     </html>
   );

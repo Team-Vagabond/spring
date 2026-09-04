@@ -12,6 +12,12 @@ export interface Springshed {
   grid_res_m: number;
   method: string;
   edge_truncated: boolean;
+  // --- how much to trust this estimate (no ground truth to check against) ---
+  stability: number;         // 0..1 — mean IoU of the catchment when the outlet is nudged ±1 cell
+  snap_distance_m: number;    // how far the given point moved to reach a modelled drainage line
+  on_channel: boolean;        // did it land on a channel (vs. just the lowest nearby cell)
+  confidence: 'high' | 'moderate' | 'low';
+  confidence_reasons: string[];
 }
 
 interface Small {
@@ -133,20 +139,41 @@ export function delineate(dem: DemGrid, springLat: number, springLng: number): S
     }
   }
   const outlet = sr * w + sc;
+  const onChannel = acc[outlet] >= streamThresh;
 
-  // reverse adjacency -> BFS upstream from outlet
+  // reverse adjacency -> BFS upstream from any outlet cell
   const inflow: number[][] = Array.from({ length: w * h }, () => []);
   for (let i = 0; i < w * h; i++) if (flowTo[i] >= 0) inflow[flowTo[i]].push(i);
 
-  const member = new Uint8Array(w * h);
-  const stack = [outlet];
-  member[outlet] = 1;
-  while (stack.length) {
-    const cur = stack.pop()!;
-    for (const up of inflow[cur]) {
-      if (!member[up]) { member[up] = 1; stack.push(up); }
+  const upslopeOf = (out: number): Uint8Array => {
+    const m = new Uint8Array(w * h);
+    const stk = [out];
+    m[out] = 1;
+    while (stk.length) {
+      const cur = stk.pop()!;
+      for (const up of inflow[cur]) if (!m[up]) { m[up] = 1; stk.push(up); }
     }
+    return m;
+  };
+
+  const member = upslopeOf(outlet);
+
+  // --- stability: nudge the outlet ±1 cell in all 8 directions, re-trace, compare (IoU on masks) ---
+  let iouSum = 0, iouN = 0;
+  const baseCount0 = member.reduce((a, b) => a + b, 0);
+  for (const [dr, dc] of NB) {
+    const rr = sr + dr, cc = sc + dc;
+    if (rr < 1 || cc < 1 || rr >= h - 1 || cc >= w - 1) continue;
+    const m2 = upslopeOf(rr * w + cc);
+    let inter = 0, uni = 0;
+    for (let i = 0; i < w * h; i++) {
+      const a = member[i], b = m2[i];
+      if (a || b) uni++;
+      if (a && b) inter++;
+    }
+    if (uni > 0) { iouSum += inter / uni; iouN++; }
   }
+  const stability = iouN ? iouSum / iouN : 0;
 
   // stats
   let count = 0, emin = Infinity, emax = -Infinity, edgeHits = 0;
@@ -159,7 +186,26 @@ export function delineate(dem: DemGrid, springLat: number, springLng: number): S
     const r = Math.floor(i / w), c = i % w;
     if (r === 0 || c === 0 || r === h - 1 || c === w - 1) edgeHits++;
   }
+  void baseCount0;
   const edge_truncated = edgeHits > 3;
+
+  const snapCells = Math.hypot(sr - Math.max(1, Math.min(h - 2, r0)), sc - Math.max(1, Math.min(w - 2, c0)));
+  const snap_distance_m = Math.round(snapCells * s.resM);
+
+  const reasons: string[] = [];
+  if (stability >= 0.8) reasons.push(`Stable: nudging the spring point by one cell in every direction re-traces to catchments that overlap ${Math.round(stability * 100)}% on average.`);
+  else if (stability >= 0.55) reasons.push(`Moderately stable: a one-cell shift in the spring point changes the catchment somewhat (${Math.round(stability * 100)}% overlap).`);
+  else reasons.push(`Unstable: a one-cell shift in the spring point produces a substantially different catchment (${Math.round(stability * 100)}% overlap) — the outline is sensitive to the exact location.`);
+  if (onChannel && snap_distance_m <= s.resM * 2) reasons.push(`The spring point sat on or within ${snap_distance_m} m of a modelled drainage line (good).`);
+  else if (onChannel) reasons.push(`The spring point was ${snap_distance_m} m from the nearest modelled drainage line and was snapped to it.`);
+  else reasons.push(`No clear drainage line near the spring point — the outlet was placed at the lowest nearby cell, which is less reliable.`);
+  if (edge_truncated) reasons.push(`The catchment reaches the edge of the analysis area, so its true extent is larger than shown.`);
+  else reasons.push(`The catchment closes within the analysis area (good).`);
+
+  let confidence: Springshed['confidence'];
+  if (stability >= 0.78 && onChannel && !edge_truncated && snap_distance_m <= s.resM * 3) confidence = 'high';
+  else if (stability >= 0.5 && onChannel) confidence = 'moderate';
+  else confidence = 'low';
 
   // build outline polygon from member mask (boundary edge chaining)
   const poly = maskToPolygon(member, w, h, s);
@@ -176,6 +222,11 @@ export function delineate(dem: DemGrid, springLat: number, springLng: number): S
     cell_count: count,
     grid_res_m: Math.round(s.resM),
     edge_truncated,
+    stability: Math.round(stability * 100) / 100,
+    snap_distance_m,
+    on_channel: onChannel,
+    confidence,
+    confidence_reasons: reasons,
     method:
       'Topographic (D8) upslope contributing area from an SRTM-derived DEM, snapped to the nearest drainage line. ' +
       'This is a first-order estimate of the surface catchment — the true recharge area follows subsurface geology and may differ.' +

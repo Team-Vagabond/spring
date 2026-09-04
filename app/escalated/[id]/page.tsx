@@ -7,12 +7,14 @@ import { api } from '@/lib/api';
 import { Reveal, CountUp, Chip, Meter, Ledger, Button, LazyMount, confTone } from '@/components/ui';
 import { ContourDivider, ContourField, RecessionLoader } from '@/components/marks';
 import { CompareSlider } from '@/components/CompareSlider';
+import { AgentTranscript } from '@/components/AgentTranscript';
+import { HumanGate, Outbox } from '@/components/HumanGate';
 
 const RechargeMap = dynamic(() => import('@/components/RechargeMap').then((m) => m.RechargeMap), {
   ssr: false,
   loading: () => (
-    <div className="h-[420px] grid place-items-center rounded-xl border border-[var(--hairline-2)] bg-[var(--ink-2)]">
-      <RecessionLoader label="drawing the catchment" />
+    <div className="h-[420px] grid place-items-center rounded-xl border border-[var(--paper-line)] bg-[var(--paper-2)]">
+      <span className="eyebrow">catchment map</span>
     </div>
   ),
 });
@@ -22,6 +24,12 @@ const fdate = (s?: string) =>
 const signed = (n?: number | null, unit = '') => (n == null ? '—' : `${n > 0 ? '+' : ''}${n}${unit}`);
 const confFill = (c: string) => (c === 'High' ? 0.86 : c === 'Moderate' ? 0.52 : 0.22);
 
+const RUNNING = ['queued', 'investigating'];
+const STATUS_LABEL: Record<string, string> = {
+  queued: 'queued', investigating: 'investigating…', awaiting_approval: 'awaiting your approval',
+  dispatched: 'dispatched', rejected: 'rejected', needs_more: 'more evidence requested', error: 'error', complete: 'complete',
+};
+
 export default function Dossier({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [d, setD] = useState<any>(null);
@@ -30,15 +38,15 @@ export default function Dossier({ params }: { params: Promise<{ id: string }> })
   const load = useCallback(async () => setD(await api(`/api/escalations/${id}`)), [id]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    if (d?.escalation?.status === 'analyzing') {
+    if (RUNNING.includes(d?.escalation?.status)) {
       const t = setInterval(load, 4000);
       return () => clearInterval(t);
     }
   }, [d?.escalation?.status, load]);
 
-  async function analyze() {
+  async function analyze(degraded = false) {
     setBusy(true);
-    await api(`/api/escalations/${id}/analyze`, { method: 'POST' }).catch(() => {});
+    await api(`/api/escalations/${id}/analyze${degraded ? '?degraded=1' : ''}`, { method: 'POST' }).catch(() => {});
     await load();
     setBusy(false);
   }
@@ -60,19 +68,24 @@ export default function Dossier({ params }: { params: Promise<{ id: string }> })
     );
   }
 
-  const { escalation: e, sensor, signal } = d;
-  const v = e.verdict;
+  const { escalation: e, sensor, signal, messages } = d;
+  const disp = e.dispatch ?? {};
+  const v = e.verdict ?? {};
   const rech = e.recharge;
   const sat = e.satellite;
   const rain = e.rainfall;
-  const topConf = v?.ranked_causes?.[0]?.confidence ?? 'Low';
+  const ranked = (disp.ranked_causes?.length ? disp.ranked_causes : v.ranked_causes) ?? [];
+  const topConf = ranked[0]?.confidence ?? 'Low';
+  const hasReport = !!(disp.primary_cause || v.primary_cause);
+  const gatePending = e.gate_status === 'pending';
+  const totalTokens = (e.tokens_prompt ?? 0) + (e.tokens_completion ?? 0);
 
   return (
     <div className="pb-24">
       {/* ============================ HEADER — console ============================ */}
       <header className="relative overflow-hidden border-b border-[var(--hairline)]">
         <ContourField className="absolute -top-6 left-0 right-0 h-56 text-[var(--water)] opacity-[0.05] pointer-events-none" />
-        <div className="relative mx-auto max-w-[1180px] px-6 pt-8 pb-10">
+        <div className="relative mx-auto max-w-[1180px] px-6 pt-8 pb-9">
           <nav className="text-[0.78rem] text-[var(--text-3)]">
             <Link href="/escalated" className="hover:text-[var(--text-2)]">Cases</Link>
             <span className="mx-2">/</span>
@@ -81,54 +94,75 @@ export default function Dossier({ params }: { params: Promise<{ id: string }> })
 
           <div className="mt-5 flex items-start justify-between gap-6 flex-wrap">
             <div className="rise-in">
-              <div className="eyebrow">Case file · <span className="font-mono">{sensor?.id}</span></div>
+              <div className="eyebrow">
+                Case file · <span className="font-mono">{disp.case_ref ?? sensor?.id}</span>
+                {e.trigger_kind && <span className="text-[var(--text-3)]"> · trigger: {e.trigger_kind}{e.run_id ? ` · run ${e.run_id}` : ''}</span>}
+              </div>
               <h1 className="display-xl mt-2">{sensor?.name}</h1>
               <p className="font-mono text-[0.8rem] text-[var(--text-3)] mt-3">
                 {sensor?.lat?.toFixed(4)}°N&nbsp; {sensor?.lng?.toFixed(4)}°E&nbsp;&nbsp;·&nbsp;&nbsp;{sensor?.elevation_m} m&nbsp;&nbsp;·&nbsp;&nbsp;{sensor?.village}
               </p>
-              <p className="text-[0.78rem] text-[var(--text-3)] mt-1">Opened {fdate(e.created_at)}{e.completed_at ? ` · analysis completed ${fdate(e.completed_at)}` : ''}</p>
+              <p className="text-[0.78rem] text-[var(--text-3)] mt-1">Opened {fdate(e.created_at)}{e.completed_at ? ` · investigated ${fdate(e.completed_at)}` : ''}</p>
             </div>
 
             <div className="flex items-center gap-3 rise-in" style={{ animationDelay: '80ms' }}>
-              <Chip tone={e.status === 'complete' ? 'moss' : e.status === 'error' ? 'clay' : 'water'} dot>
-                {e.status === 'analyzing' ? 'analysing' : e.status === 'complete' ? 'analysis complete' : e.status}
+              <Chip tone={e.status === 'dispatched' ? 'moss' : e.status === 'error' || e.status === 'rejected' ? 'clay' : gatePending ? 'ochre' : 'water'} dot>
+                {STATUS_LABEL[e.status] ?? e.status}
               </Chip>
-              <Button variant="ghost" onClick={analyze} disabled={busy || e.status === 'analyzing'}>
-                {busy ? 'Running…' : e.status === 'complete' ? 'Re-run analysis' : 'Run analysis'}
-              </Button>
+              {!RUNNING.includes(e.status) && (
+                <Button variant="secondary" onClick={() => analyze(false)} disabled={busy}>
+                  {busy ? 'Running…' : hasReport ? 'Re-investigate' : 'Investigate'}
+                </Button>
+              )}
             </div>
           </div>
 
           {signal && (
-            <div className="mt-7 border-l-2 border-[var(--clay-a40)] pl-4 max-w-3xl rise-in" style={{ animationDelay: '160ms' }}>
+            <div className="mt-7 border-l-2 border-[var(--clay-a40)] pl-4 max-w-3xl rise-in" style={{ animationDelay: '140ms' }}>
               <div className="eyebrow text-[var(--clay-bright)]">Why this was opened</div>
               <p className="text-[0.95rem] text-[var(--text)] mt-1.5">{signal.headline}</p>
               {signal.agent_reasoning && <p className="text-[0.85rem] text-[var(--text-3)] mt-1.5 leading-relaxed">{signal.agent_reasoning}</p>}
             </div>
           )}
+
+          {e.steps > 0 && (
+            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-1 font-mono text-[0.74rem] text-[var(--text-3)] rise-in" style={{ animationDelay: '200ms' }}>
+              <span><span className="text-[var(--text)]">{e.steps}</span> steps</span>
+              <span><span className={e.tool_failures ? 'text-[var(--ochre)]' : 'text-[var(--text)]'}>{e.tool_failures}</span> tool failure{e.tool_failures === 1 ? '' : 's'} recovered</span>
+              <span><span className="text-[var(--text)]">1</span> human gate</span>
+              <span><span className="text-[var(--text)]">{totalTokens.toLocaleString()}</span> tokens</span>
+              <span><span className="text-[var(--water-bright)]">NPR {Number(e.cost_npr || 0).toFixed(2)}</span></span>
+              {e.confidence != null && <span>confidence <span className="text-[var(--text)]">{Math.round(e.confidence * 100)}%</span></span>}
+              {e.degraded && <span className="text-[var(--ochre)]">· degraded run</span>}
+              <span className="text-[var(--text-3)]">· {(e.models_used ?? []).join(' + ')}</span>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* ============================ ANALYSING / ERROR ============================ */}
-      {e.status === 'analyzing' && (
-        <div className="mx-auto max-w-[1180px] px-6 py-20">
+      {/* ============================ TRANSCRIPT — deliverable #2 ============================ */}
+      <AgentTranscript trace={e.trace ?? []} downloadHref={`/api/escalations/${id}/trace`} />
+
+      {/* ============================ RUNNING / ERROR ============================ */}
+      {RUNNING.includes(e.status) && (
+        <div className="mx-auto max-w-[1180px] px-6 py-16">
           <div className="mx-auto max-w-md text-center">
-            <RecessionLoader label="deep analysis running" />
+            <RecessionLoader label="agent investigating" />
             <p className="text-[0.9rem] text-[var(--text-2)] mt-6 leading-relaxed">
-              Pulling Sentinel-2 imagery of the recharge area for two eras, tracing the catchment
-              across the elevation model, and reading 25 years of rainfall. About a minute.
+              The agent is choosing which evidence to gather. Sensor and flow first, then rainfall,
+              the recharge-area trace, and Sentinel-2. It stops at the human gate — usually under two minutes.
             </p>
           </div>
         </div>
       )}
       {e.status === 'error' && (
-        <div className="mx-auto max-w-[1180px] px-6 py-16">
-          <p className="text-[var(--clay-bright)]">Analysis failed: {e.error}</p>
+        <div className="mx-auto max-w-[1180px] px-6 py-12">
+          <p className="text-[var(--clay-bright)] text-sm">Investigation failed: {e.error}</p>
         </div>
       )}
 
       {/* ============================ THE REPORT — paper ============================ */}
-      {e.status === 'complete' && v && (
+      {hasReport && (
         <div className="mx-auto max-w-[1180px] px-6 mt-10">
           <div
             className="paper relative mx-auto max-w-[880px] rounded-2xl px-7 sm:px-12 py-11 shadow-[0_2px_4px_rgba(0,0,0,0.3),0_40px_80px_-32px_rgba(0,0,0,0.55)]"
@@ -136,143 +170,147 @@ export default function Dossier({ params }: { params: Promise<{ id: string }> })
           >
             <div className="absolute inset-x-0 top-0 h-[3px] rounded-t-2xl bg-[var(--water)]" />
 
+            {gatePending && (
+              <HumanGate escalationId={id} action={e.gate_action} dispatch={disp} onDone={load} />
+            )}
+            {e.status === 'dispatched' && <Outbox messages={messages} caseRef={disp.case_ref} />}
+            {e.status === 'rejected' && (
+              <div className="rounded-xl border border-[var(--clay-a40)] bg-[var(--clay-a12)] p-4 mb-9 text-[0.85rem] text-[var(--paper-ink-2)]">
+                Rejected by {e.decided_by}. Nothing was sent or filed. Re-investigate to try again.
+              </div>
+            )}
+
             {/* --- THE FINDING --- */}
             <Reveal>
               <div className="eyebrow">Finding — most likely cause</div>
-              <h2 className="display-l mt-2 text-[var(--paper-ink)]">{v.primary_cause}</h2>
-              <p className="measure mt-4 text-[0.98rem] leading-[1.7] text-[var(--paper-ink)]">{v.explanation}</p>
-              {v.implicated_zone && (
+              <h2 className="display-l mt-2 text-[var(--paper-ink)]">{disp.primary_cause || v.primary_cause}</h2>
+              <p className="measure mt-4 text-[0.98rem] leading-[1.7] text-[var(--paper-ink)]">{disp.explanation || v.explanation}</p>
+              {(disp.implicated_zone || v.implicated_zone) && (
                 <p className="measure mt-3 text-[0.9rem] text-[var(--paper-ink-2)]">
-                  <span className="eyebrow">Where&nbsp;</span>{v.implicated_zone}
+                  <span className="eyebrow">Where&nbsp;</span>{disp.implicated_zone || v.implicated_zone}
                 </p>
               )}
-              <div className="mt-5 flex items-center gap-3">
+              <div className="mt-5 flex items-center gap-3 flex-wrap">
                 <Chip tone={confTone(topConf)}>{topConf} confidence</Chip>
-                <span className="text-[0.78rem] text-[var(--paper-ink-3)]">
-                  leading hypothesis of {v.ranked_causes?.length ?? 0} considered
-                </span>
+                {e.confidence != null && <span className="text-[0.78rem] text-[var(--paper-ink-3)]">agent&rsquo;s own confidence {Math.round(e.confidence * 100)}%</span>}
+                <span className="text-[0.78rem] text-[var(--paper-ink-3)]">· leading hypothesis of {ranked.length} considered</span>
               </div>
             </Reveal>
 
             <div className="my-9"><ContourDivider label="Evidence" tone="paper" /></div>
 
-            {/* --- PLATE I — source area --- */}
-            {rech?.polygon && (
+            {/* --- PLATE I --- */}
+            {rech?.polygon ? (
               <Reveal className="mb-11">
                 <div className="eyebrow">Plate I · The source area</div>
                 <p className="text-[0.9rem] text-[var(--paper-ink-2)] mt-1.5 measure">
-                  Traced uphill from the spring across the elevation model — the ground that most
-                  likely feeds it.
+                  Traced uphill from the spring across a live elevation model — the ground that most likely feeds it.
                 </p>
                 <div className="mt-4">
                   <LazyMount
                     minHeight={420}
-                    placeholder={
-                      <div className="h-[420px] grid place-items-center rounded-xl border border-[var(--paper-line)] bg-[var(--paper-2)]">
-                        <span className="eyebrow">catchment map</span>
-                      </div>
-                    }
+                    placeholder={<div className="h-[420px] rounded-xl border border-[var(--paper-line)] bg-[var(--paper-2)] grid place-items-center"><span className="eyebrow">catchment map</span></div>}
                   >
-                    <RechargeMap
-                      polygon={rech.polygon}
-                      spring={{ lat: sensor.lat, lng: sensor.lng, name: sensor.name }}
-                      springSnapped={rech.spring_snapped}
-                      aoi={rech.aoi}
-                    />
+                    <RechargeMap polygon={rech.polygon} spring={{ lat: sensor.lat, lng: sensor.lng, name: sensor.name }} springSnapped={rech.spring_snapped} aoi={rech.aoi} />
                   </LazyMount>
                 </div>
                 <div className="mt-5 grid sm:grid-cols-[1fr_1.1fr] gap-x-10 gap-y-4">
-                  <Ledger
-                    rows={[
-                      ['catchment area', <><CountUp to={rech.area_km2} decimals={2} /> km²</>],
-                      ['elevation range', `${rech.elev_min_m}–${rech.elev_max_m} m`],
-                      ['spring elevation', `${rech.elev_spring_m} m`],
-                      ['DEM resolution', `${rech.grid_res_m} m`],
-                    ]}
-                  />
-                  <p className="text-[0.78rem] leading-relaxed text-[var(--paper-ink-3)]">
-                    {rech.method}
-                  </p>
+                  <Ledger rows={[
+                    ['catchment area', <><CountUp to={rech.area_km2} decimals={2} /> km²</>],
+                    ['elevation range', `${rech.elev_min_m}–${rech.elev_max_m} m`],
+                    ['spring elevation', `${rech.elev_spring_m} m`],
+                    ['DEM resolution', `${rech.grid_res_m} m`],
+                  ]} />
+                  <p className="text-[0.78rem] leading-relaxed text-[var(--paper-ink-3)]">{rech.method}</p>
                 </div>
+
+                {rech.confidence && (
+                  <div className="mt-5 border border-[var(--rule-2)] bg-[var(--paper-2)] p-4">
+                    <div className="flex items-baseline justify-between gap-4">
+                      <span className="text-[0.82rem] font-semibold text-[var(--ink)]">How much to trust this outline</span>
+                      <Chip tone={rech.confidence === 'high' ? 'field' : rech.confidence === 'moderate' ? 'watch' : 'alert'}>
+                        {rech.confidence} confidence
+                      </Chip>
+                    </div>
+                    <p className="text-[0.8rem] text-[var(--paper-ink-2)] mt-2 measure">
+                      There is no surveyed springshed to check this against. Instead we test how sensitive it is:
+                      we nudge the spring point one cell in every direction and re-trace.
+                    </p>
+                    <ul className="mt-2.5 space-y-1.5 text-[0.8rem] text-[var(--paper-ink-2)]">
+                      {(rech.confidence_reasons ?? []).map((r: string, i: number) => (
+                        <li key={i} className="flex gap-2">
+                          <span className="mt-[6px] w-1.5 h-1.5 shrink-0" style={{ background: 'var(--contour)' }} />
+                          {r}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-[0.74rem] text-[var(--paper-ink-3)] mt-3">
+                      This is the confidence in a <em>surface</em> catchment. The <em>groundwater</em> recharge area
+                      can differ — a hydrogeologist still needs to confirm it. A real accuracy figure needs several
+                      field-verified springsheds to benchmark against (roadmap).
+                    </p>
+                  </div>
+                )}
               </Reveal>
+            ) : (
+              <PlateSkipped n="I" title="The source area" reason="The catchment trace did not run — the elevation model was unreachable." />
             )}
 
-            {/* --- PLATE II — then & now --- */}
-            {sat && (
+            {/* --- PLATE II --- */}
+            {sat && !sat.unavailable ? (
               <Reveal className="mb-11">
                 <div className="eyebrow">Plate II · What changed</div>
                 <p className="text-[0.9rem] text-[var(--paper-ink-2)] mt-1.5 measure">{sat.interpretation}</p>
                 <div className="mt-4">
                   {sat.past_image && sat.recent_image ? (
-                    <CompareSlider
-                      before={sat.past_image}
-                      after={sat.recent_image}
-                      beforeLabel={sat.past_period}
-                      afterLabel={sat.recent_period}
-                    />
+                    <CompareSlider before={sat.past_image} after={sat.recent_image} beforeLabel={sat.past_period} afterLabel={sat.recent_period} />
                   ) : (
                     <div className="grid sm:grid-cols-2 gap-3">
                       {[['then', sat.past_image, sat.past_period], ['now', sat.recent_image, sat.recent_period]].map(([k, img, p]: any) => (
                         <div key={k}>
-                          {img ? (
-                            <img src={img} alt={k} className="w-full rounded-xl border border-[var(--paper-line)]" />
-                          ) : (
-                            <div className="aspect-[4/3] rounded-xl border border-[var(--paper-line)] grid place-items-center text-[0.75rem] text-[var(--paper-ink-3)]">
-                              cloud cover — no clear scene
-                            </div>
-                          )}
+                          {img ? <img src={img} alt={k} className="w-full rounded-xl border border-[var(--paper-line)]" />
+                            : <div className="aspect-[4/3] rounded-xl border border-[var(--paper-line)] grid place-items-center text-[0.75rem] text-[var(--paper-ink-3)]">cloud cover — no clear scene</div>}
                           <div className="font-mono text-[0.68rem] text-[var(--paper-ink-3)] mt-1">{p}</div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-
                 <div className="mt-5 grid grid-cols-2 gap-x-10 gap-y-3">
-                  <ChangeGauge
-                    label="Vegetation · NDVI"
-                    value={sat.ndvi_change_pct}
-                    unit="%"
-                    good="up"
-                  />
-                  <ChangeGauge
-                    label="Built-up / bare · NDBI"
-                    value={sat.builtup_change_pp}
-                    unit=" pp"
-                    good="down"
-                  />
+                  <ChangeGauge label="Vegetation · NDVI" value={sat.ndvi_change_pct} unit="%" good="up" />
+                  <ChangeGauge label="Built-up / bare · NDBI" value={sat.builtup_change_pp} unit=" pp" good="down" />
                 </div>
                 <p className="text-[0.72rem] text-[var(--paper-ink-3)] mt-4">
                   Sentinel-2 L2A (Copernicus), least-cloud dry-season mosaic · usable imagery: {sat.valid_coverage}
                 </p>
               </Reveal>
+            ) : (
+              <PlateSkipped n="II" title="What changed" reason={sat?.interpretation || 'No usable Sentinel-2 scene was available for this run.'} />
             )}
 
-            {/* --- PLATE III — rainfall --- */}
-            {rain && (
+            {/* --- PLATE III --- */}
+            {rain ? (
               <Reveal className="mb-4">
                 <div className="eyebrow">Plate III · The climate</div>
-                <p className="text-[0.9rem] text-[var(--paper-ink-2)] mt-1.5 measure">{rain.summary}</p>
-                <div className="mt-5">
-                  <RainChart rain={rain} />
-                </div>
+                <p className="text-[0.9rem] text-[var(--paper-ink-2)] mt-1.5 measure">
+                  {rain.summary}{rain.stale ? ` ${rain.staleness_note}` : ''}
+                </p>
+                {rain.yearly && <div className="mt-5"><RainChart rain={rain} /></div>}
                 <div className="mt-4 grid sm:grid-cols-2 gap-x-10">
-                  <Ledger
-                    rows={[
-                      ['annual normal', `${rain.annual_normal_mm} mm`],
-                      ['last 12 months', `${rain.last12_mm} mm`],
-                      ['anomaly', <span className={rain.anomaly_pct < -10 ? 'text-[var(--clay)]' : ''}>{signed(rain.anomaly_pct, '%')}</span>],
-                    ]}
-                  />
-                  <Ledger
-                    rows={[
-                      ['monsoon anomaly', signed(rain.monsoon_anomaly_pct, '%')],
-                      ['longest dry spell', `${rain.dry_spell_days} days`],
-                      ['source', <span className="text-[0.7rem]">ERA5-Land reanalysis</span>],
-                    ]}
-                  />
+                  <Ledger rows={[
+                    ['annual normal', `${rain.annual_normal_mm} mm`],
+                    ['last 12 months', `${rain.last12_mm} mm`],
+                    ['anomaly', <span className={rain.anomaly_pct < -10 ? 'text-[var(--clay)]' : ''}>{signed(rain.anomaly_pct, '%')}</span>],
+                  ]} />
+                  <Ledger rows={[
+                    ['monsoon anomaly', signed(rain.monsoon_anomaly_pct, '%')],
+                    ['longest dry spell', `${rain.dry_spell_days} days`],
+                    ['source', <span className="text-[0.7rem]">ERA5-Land{rain.stale ? ' · 4d stale' : ''}</span>],
+                  ]} />
                 </div>
               </Reveal>
+            ) : (
+              <PlateSkipped n="III" title="The climate" reason="Rainfall data did not load for this run." />
             )}
 
             <div className="my-9"><ContourDivider label="Weighing the causes" tone="paper" /></div>
@@ -280,7 +318,7 @@ export default function Dossier({ params }: { params: Promise<{ id: string }> })
             {/* --- RANKED HYPOTHESES --- */}
             <Reveal>
               <ol className="space-y-7">
-                {(v.ranked_causes ?? []).map((c: any, i: number) => (
+                {ranked.map((c: any, i: number) => (
                   <li key={i} className="grid grid-cols-[auto_1fr] gap-x-4">
                     <span className="font-mono text-[0.8rem] text-[var(--paper-ink-3)] pt-1">{String(i + 1).padStart(2, '0')}</span>
                     <div>
@@ -288,11 +326,7 @@ export default function Dossier({ params }: { params: Promise<{ id: string }> })
                         <h3 className="display-m text-[var(--paper-ink)]">{c.cause}</h3>
                         <span className="eyebrow shrink-0">{c.confidence}</span>
                       </div>
-                      <Meter
-                        value={confFill(c.confidence)}
-                        tone={c.confidence === 'High' ? 'moss' : c.confidence === 'Moderate' ? 'ochre' : 'water'}
-                        className="mt-2 max-w-[220px]"
-                      />
+                      <Meter value={confFill(c.confidence)} tone={c.confidence === 'High' ? 'moss' : c.confidence === 'Moderate' ? 'ochre' : 'water'} className="mt-2 max-w-[220px]" />
                       <div className="mt-3 grid sm:grid-cols-2 gap-x-8 gap-y-3 text-[0.83rem]">
                         <BalanceCol title="Supports" items={c.evidence} tone="moss" />
                         <BalanceCol title="Weighs against" items={c.counter_evidence} tone="clay" />
@@ -304,11 +338,11 @@ export default function Dossier({ params }: { params: Promise<{ id: string }> })
             </Reveal>
 
             {/* --- NEXT STEPS --- */}
-            {v.suggestions?.length > 0 && (
+            {(disp.recommended_actions?.length || v.suggestions?.length) > 0 && (
               <Reveal className="mt-10">
                 <div className="my-9"><ContourDivider label="Recommended next steps" tone="paper" /></div>
                 <ul className="space-y-4">
-                  {v.suggestions.map((s: any, i: number) => (
+                  {(disp.recommended_actions ?? v.suggestions ?? []).map((s: any, i: number) => (
                     <li key={i} className="flex gap-3">
                       <span className="mt-[3px] shrink-0 w-4 h-4 rounded-[4px] border border-[var(--paper-ink-3)]" />
                       <p className="text-[0.9rem] leading-relaxed">
@@ -323,11 +357,11 @@ export default function Dossier({ params }: { params: Promise<{ id: string }> })
 
             {/* --- FOOTNOTE --- */}
             <div className="mt-12 pt-6 border-t border-[var(--paper-line)] text-[0.72rem] leading-relaxed text-[var(--paper-ink-3)]">
-              {v.uncertainty && <p className="mb-2">{v.uncertainty}</p>}
+              {(disp.uncertainty || v.uncertainty) && <p className="mb-2">{disp.uncertainty || v.uncertainty}</p>}
               <p>
-                An evidence-based hypothesis, not proof of causation. Satellite, elevation and
-                rainfall inputs are live; flow readings are simulated for this prototype.
-                {e.models_used?.length > 0 && <> Reasoning: <span className="font-mono">{e.models_used.join(', ')}</span>.</>}
+                An evidence-based hypothesis, not proof of causation. Satellite, elevation and rainfall
+                inputs are live; flow-sensor readings are simulated for this prototype (see README).
+                {e.models_used?.length > 0 && <> Reasoning: <span className="font-mono">{e.models_used.join(', ')}</span> · <span className="font-mono">NPR {Number(e.cost_npr || 0).toFixed(2)}</span> / run.</>}
               </p>
             </div>
           </div>
@@ -339,20 +373,26 @@ export default function Dossier({ params }: { params: Promise<{ id: string }> })
 
 /* ---------- small pieces ---------- */
 
+function PlateSkipped({ n, title, reason }: { n: string; title: string; reason: string }) {
+  return (
+    <div className="mb-11 rounded-xl border border-dashed border-[var(--paper-line)] p-4">
+      <div className="eyebrow">Plate {n} · {title} — not available</div>
+      <p className="text-[0.83rem] text-[var(--paper-ink-3)] mt-1.5 measure">{reason} The agent proceeded on the evidence it had and lowered its confidence accordingly.</p>
+    </div>
+  );
+}
+
 function ChangeGauge({ label, value, unit, good }: { label: string; value: number | null; unit: string; good: 'up' | 'down' }) {
   const isBad = value == null ? false : good === 'up' ? value < -3 : value > 2;
-  const tone = value == null ? 'water' : isBad ? 'clay' : 'moss';
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <span className="eyebrow">{label}</span>
         <span className={`font-mono text-[0.95rem] tnum ${isBad ? 'text-[var(--clay)]' : 'text-[var(--paper-ink)]'}`}>
-          {value == null ? '—' : (
-            <><CountUp to={value} decimals={1} prefix={value > 0 ? '+' : ''} />{unit}</>
-          )}
+          {value == null ? '—' : (<><CountUp to={value} decimals={1} prefix={value > 0 ? '+' : ''} />{unit}</>)}
         </span>
       </div>
-      <Meter value={value ?? 0} mode="signed" max={20} tone={tone as any} className="mt-2" />
+      <Meter value={value ?? 0} mode="signed" max={20} tone={value == null ? 'water' : isBad ? 'clay' : 'moss'} className="mt-2" />
     </div>
   );
 }
@@ -385,33 +425,14 @@ function RainChart({ rain }: { rain: any }) {
   return (
     <ResponsiveContainer width="100%" height={170}>
       <BarChart data={data} margin={{ top: 6, right: 4, bottom: 0, left: -18 }} barCategoryGap="22%">
-        <XAxis
-          dataKey="year"
-          stroke="var(--paper-ink-3)"
-          tick={{ fontSize: 10, fontFamily: 'var(--font-mono)' }}
-          tickLine={false}
-          axisLine={{ stroke: 'var(--paper-line)' }}
-          interval={3}
-        />
+        <XAxis dataKey="year" stroke="var(--paper-ink-3)" tick={{ fontSize: 10, fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={{ stroke: 'var(--paper-line)' }} interval={3} />
         <YAxis stroke="var(--paper-ink-3)" tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={false} width={44} />
-        <Tooltip
-          cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-          contentStyle={{ background: 'var(--paper)', border: '1px solid var(--paper-line)', borderRadius: 8, fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--paper-ink)' }}
-          formatter={(x: any) => [`${x} mm`, 'rainfall']}
-        />
+        <Tooltip cursor={{ fill: 'rgba(0,0,0,0.04)' }} contentStyle={{ background: 'var(--paper)', border: '1px solid var(--paper-line)', borderRadius: 8, fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--paper-ink)' }} formatter={(x: any) => [`${x} mm`, 'rainfall']} />
         <ReferenceLine y={normal} stroke="var(--ochre)" strokeDasharray="3 4" strokeWidth={1.25} />
         <Bar dataKey="mm" radius={[2, 2, 0, 0]} isAnimationActive>
-          {data.map((row, i) => {
-            const deficit = row.mm < normal * 0.9;
-            const isLast = row.year === lastYear;
-            return (
-              <Cell
-                key={i}
-                fill={isLast ? 'var(--water-deep)' : deficit ? 'var(--clay)' : 'var(--paper-ink-3)'}
-                fillOpacity={isLast ? 1 : deficit ? 0.75 : 0.5}
-              />
-            );
-          })}
+          {data.map((row, i) => (
+            <Cell key={i} fill={row.year === lastYear ? 'var(--water-deep)' : row.mm < normal * 0.9 ? 'var(--clay)' : 'var(--paper-ink-3)'} fillOpacity={row.year === lastYear ? 1 : row.mm < normal * 0.9 ? 0.75 : 0.5} />
+          ))}
         </Bar>
       </BarChart>
     </ResponsiveContainer>

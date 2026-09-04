@@ -52,7 +52,12 @@ export function RechargeMap({
             />
           </LayersControl.BaseLayer>
           <LayersControl.BaseLayer name="Terrain">
-            <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" attribution="OpenTopoMap" maxZoom={17} />
+            <TileLayer
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}"
+              attribution="Esri, National Geographic"
+              maxZoom={16}
+              className="map-terrain"
+            />
           </LayersControl.BaseLayer>
         </LayersControl>
 

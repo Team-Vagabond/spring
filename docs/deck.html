@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Naula — deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0b1512; --ink2:#101c17; --line:#26332c; --line2:#35473d;
+    --text:#e9ede6; --dim:#a7b4a9; --dim2:#6c7b70;
+    --water:#4fa8ab; --waterb:#74c9ca; --moss:#8aa84b; --ochre:#cc8542; --clay:#cd6152;
+    --paper:#f1ece0; --paperink:#23281f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:#050a08;color:var(--text);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;overflow:hidden}
+  .deck{height:100vh;width:100vw;position:relative}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;
+    padding:8vh 9vw;background:var(--ink)}
+  .slide.on{display:flex;animation:in .4s cubic-bezier(.22,1,.36,1)}
+  @keyframes in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .eyebrow{font-size:.72rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--dim2)}
+  h1{font-family:"Fraunces",Georgia,serif;font-weight:400;font-size:clamp(2rem,4.6vw,3.6rem);
+    line-height:1.05;letter-spacing:-.02em;margin:.5rem 0 0}
+  h2{font-family:"Fraunces",Georgia,serif;font-weight:500;font-size:clamp(1.3rem,2.4vw,1.9rem);margin:.3rem 0}
+  p{font-size:clamp(1rem,1.5vw,1.35rem);line-height:1.5;color:var(--dim);max-width:46ch;margin-top:1.2rem}
+  p b,p strong{color:var(--text);font-weight:600}
+  .big{font-family:"Fraunces",Georgia,serif;font-size:clamp(1.4rem,2.6vw,2.1rem);color:var(--text);line-height:1.35;max-width:24ch}
+  .mono{font-family:"IBM Plex Mono",monospace}
+  ul{margin-top:1.4rem;max-width:52ch}
+  li{font-size:clamp(.95rem,1.4vw,1.2rem);color:var(--dim);line-height:1.5;margin:.5rem 0;list-style:none;padding-left:1.2rem;position:relative}
+  li::before{content:"—";position:absolute;left:0;color:var(--water)}
+  li b{color:var(--text)}
+  .arch{font-family:"IBM Plex Mono",monospace;font-size:clamp(.62rem,1.05vw,.86rem);
+    line-height:1.5;white-space:pre;color:var(--dim);background:var(--ink2);
+    border:1px solid var(--line);border-radius:10px;padding:1.4rem 1.6rem;margin-top:1.4rem;overflow:auto}
+  .arch .g{color:var(--waterb)} .arch .o{color:var(--ochre)} .arch .m{color:var(--moss)}
+  table{margin-top:1.4rem;border-collapse:collapse;font-size:clamp(.85rem,1.25vw,1.05rem)}
+  td{padding:.55rem 1.4rem .55rem 0;vertical-align:top;color:var(--dim);border-bottom:1px solid var(--line)}
+  td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+  .foot{position:absolute;left:9vw;bottom:5vh;font-size:.72rem;color:var(--dim2);letter-spacing:.05em}
+  .n{position:absolute;right:9vw;bottom:5vh;font-size:.72rem;color:var(--dim2)}
+  .mark{width:34px;height:34px;position:absolute;left:9vw;top:6vh}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:2rem 3rem;margin-top:1.4rem;max-width:60ch}
+  .grid2 p{margin-top:.4rem;font-size:clamp(.85rem,1.2vw,1rem)}
+  .grid2 .eyebrow{font-size:.62rem}
+  .demo-steps li{margin:.7rem 0}
+  .demo-steps .mono{color:var(--waterb)}
+  @media print{
+    body{overflow:visible;background:#fff}
+    .slide{display:flex!important;position:relative;inset:auto;height:100vh;page-break-after:always;background:var(--ink)}
+    .n{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <section class="slide">
+    <svg class="mark" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="var(--water)" stroke-width="1.1" opacity=".4"/><circle cx="12" cy="12" r="5.4" stroke="var(--water)" stroke-width="1.2" opacity=".7"/><circle cx="12" cy="12" r="2.4" fill="var(--water)"/></svg>
+    <div style="margin:auto 0">
+      <div class="eyebrow">01 · The problem</div>
+      <p class="big">In a Darchula village, the spring the whole ward drinks from has given a
+      quarter less water for two years — and nobody who could act knows why.</p>
+      <p>Finding out means a hydrogeologist, a GIS analyst, rainfall records from Kathmandu, and a
+      two-day trek. For this spring, that has never happened. It just slowly goes dry.</p>
+    </div>
+    <div class="foot">NAULA · नौला — a spring source</div>
+  </section>
+
+  <section class="slide">
+    <div style="margin:auto 0">
+      <div class="eyebrow">02 · Who, exactly</div>
+      <h1>Ranju Bhatta</h1>
+      <p>WASH focal person at a rural municipality office.</p>
+      <ul>
+        <li>One desk. Part-time on water. <b>No GIS, no hydrogeology.</b></li>
+        <li>Responsible for <b>50–250 springs</b> she cannot visit.</li>
+        <li>Hears about a failing spring <b>months late</b>, from a complaint — with no way to
+        triage which of the 250 is worst.</li>
+      </ul>
+      <p>She is not "farmers in Nepal". She is one findable desk, in every one of Nepal's
+      <b>753 local governments</b>.</p>
+    </div>
+    <div class="foot">02</div>
+  </section>
+
+  <section class="slide">
+    <div style="margin:auto 0">
+      <div class="eyebrow">03 · What Naula does, unasked</div>
+      <p class="big">A scheduled sweep watches every sensor. The moment one is genuinely
+      declining, an agent investigates on its own — and hands Ranju a ready-to-approve case
+      with a Nepali SMS brief.</p>
+      <p style="color:var(--ochre)"><b>It never sends or files anything itself.</b></p>
+      <p class="mono" style="font-size:.85rem;color:var(--dim2)">from scheduled trigger to a case on her desk — no human in the loop</p>
+    </div>
+    <div class="foot">03</div>
+  </section>
+
+  <section class="slide">
+    <div style="margin:auto 0">
+      <div class="eyebrow">04 · Live demo</div>
+      <h1>Watch it run</h1>
+      <ul class="demo-steps">
+        <li><b>Watch log → Run scheduled sweep.</b> <span class="mono">POST /api/cron</span> — a
+        crontab hits this. 6 springs on the cheap model, <span class="mono">NPR 0.03</span>. Two escalate.</li>
+        <li><b>Open the case → the agent transcript.</b> Trigger it didn't press · tools in an
+        order we didn't script · <span class="mono">compare_satellite ✗504 → RETRY → ok</span> ·
+        <span class="mono">H_rain 30→45→60%</span> · <span class="mono">GATE — HUMAN APPROVAL REQUIRED</span>.</li>
+        <li><b>The case.</b> Ranked causes, for &amp; against. Recharge map. Before/after satellite
+        wipe. 25 years of rainfall. Confidence <b>60%</b> — stated.</li>
+        <li><b>Approve.</b> Nepali SMS to the ward coordinator + District Water Committee. Case
+        filed. <span class="mono">ACTION</span> in the trace — the only thing that left the building.</li>
+      </ul>
+    </div>
+    <div class="foot">04 · spend a third of six minutes here</div>
+  </section>
+
+  <section class="slide">
+    <div style="margin:auto 0;width:100%">
+      <div class="eyebrow">05 · How it works</div>
+      <div class="arch">cron ─▶ sweep  <span class="o">DeepSeek-V4-Flash</span> · 1 call/sensor · pure-code anomaly maths
+      │  spring crosses threshold
+      ▼
+   <span class="g">BOUNDED AGENT LOOP</span>   MAX_STEPS 12 · token+NPR meter · structured trace
+     goal in ─▶ model picks the next tool
+        check_sensor · check_flow_history · check_rainfall→<span class="g">Open-Meteo</span>
+        map_recharge_area→<span class="g">AWS SRTM</span>+D8 · compare_satellite→<span class="g">Copernicus Sentinel-2</span>
+        note_hypothesis (memory) · request_dispatch ─▶ <span class="o">★ HUMAN GATE ★</span>
+     routing: Flash for recon → <span class="o">gpt-5.5</span> once evidence competes · visible failure+retry
+      │  awaiting_approval
+      ▼
+   HUMAN  approve │ reject │ request more  ─▶  file case + send Nepali SMS</div>
+      <ul style="max-width:60ch">
+        <li><b>Goal, not a script</b> — two runs of one case, two different tool orders.</li>
+        <li><b>Memory</b> — hypothesis beliefs across the run; per-spring history across runs, in Postgres.</li>
+        <li><b>Routing</b> — 90% of calls on the cheap model; we can show the cost gap.</li>
+      </ul>
+    </div>
+    <div class="foot">05</div>
+  </section>
+
+  <section class="slide">
+    <div style="margin:auto 0">
+      <div class="eyebrow">06 · The bad day</div>
+      <p class="big">The week the rain does not stop. No usable satellite. Sensor underwater and
+      offline. LLM key rate-limited. Rainfall four days stale.</p>
+      <ul>
+        <li>Sweep still runs — cheap model, deterministic fallback</li>
+        <li>Investigation routes <b>entirely</b> to the fallback model</li>
+        <li>Offline sensor → <b>status UNKNOWN</b>, not "failed"</li>
+        <li>Satellite evidence dropped · stale rainfall flagged</li>
+        <li>Can't separate rain from a broken pipe remotely → <b>low-confidence</b> case: <i>"send someone to look"</i></li>
+        <li>Nepali SMS still drafts — and <b>queues</b> for approval</li>
+      </ul>
+      <p class="mono" style="font-size:.85rem;color:var(--dim2)">Simulate a bad day — runs exactly this. The handback to a human is the design.</p>
+    </div>
+    <div class="foot">06</div>
+  </section>
+
+  <section class="slide">
+    <div style="margin:auto 0;width:100%">
+      <div class="eyebrow">07 · What it takes to be real</div>
+      <table>
+        <tr><td>Cost per run</td><td>Sweep of 6 springs: <b class="mono">NPR 0.03</b>. An escalated investigation: <b class="mono">~NPR 7</b>. A full day for a 200-spring municipality: <b class="mono">~NPR 100 · USD 0.75</b>.</td></tr>
+        <tr><td>Who pays</td><td>The municipality's WASH budget, or a WASH-sector programme (ICIMOD / HELVETAS / SNV / Red Cross already fund springshed work by hand). This replaces the evidence-gathering, not the hydrogeologist.</td></tr>
+        <tr><td>Route to users</td><td>No app store. It rides the municipal water desk and the District Water Resources Committee — institutions that already exist and already meet. The SMS reaches a handset the coordinator already carries.</td></tr>
+        <tr><td>At 10,000 springs</td><td>Sweep is linear and cheap; bottleneck is LLM quota → more to the fast model, batch, cache. Sentinel Hub free tier ≈ 100–300 investigations/month, then ~USD 0.30 each.</td></tr>
+        <tr><td>Next 3 months</td><td>One 10-spring sensor pilot with one municipality · one hydrogeologist-verified springshed to benchmark the estimate · gauge/CHIRPS rainfall · IVR for coordinators who don't read comfortably.</td></tr>
+      </table>
+    </div>
+    <div class="foot">07</div>
+  </section>
+
+  <section class="slide">
+    <div style="margin:auto 0">
+      <div class="eyebrow">08 · The ask</div>
+      <h1>What we need from this room</h1>
+      <ul>
+        <li>An intro to <b>one rural municipality</b> (mid-hills / far-west) to host a 10-spring
+        sensor pilot — ideally via a WASH programme (ICIMOD, HELVETAS, DoLI).</li>
+        <li>A <b>hydrogeologist</b> to verify two springsheds — so we can put a real accuracy
+        number on the recharge trace.</li>
+        <li>If you fund water / climate resilience: <b>USD 8–12k</b> covers the sensor pilot and
+        three months of build.</li>
+      </ul>
+      <p>Slide 7 was not hypothetical. The top three pitch again at the AI Summit in December.</p>
+    </div>
+    <div class="foot">Naula · नौला &nbsp;·&nbsp; the trace: <span class="mono">/api/escalations/[id]/trace</span></div>
+  </section>
+
+</div>
+<div class="n"><span id="cur">1</span> / 8 &nbsp; · &nbsp; ← →</div>
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  const show=n=>{i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+    document.getElementById('cur').textContent=i+1;
+    location.hash=i+1;};
+  addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown')show(i+1);
+    if(e.key==='ArrowLeft'||e.key==='PageUp')show(i-1);
+    if(e.key==='Home')show(0); if(e.key==='End')show(slides.length-1);
+  });
+  addEventListener('click',e=>{ if(e.clientX > innerWidth*0.5) show(i+1); else show(i-1); });
+  show((parseInt(location.hash.slice(1))||1)-1);
+</script>
+</body>
+</html>

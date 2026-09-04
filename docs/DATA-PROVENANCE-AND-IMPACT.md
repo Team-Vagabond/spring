@@ -274,3 +274,27 @@ Concretely, for the screening-and-triage layer:
 
 and **zero improvement** to the accuracy of the final diagnosis, which still requires a field
 visit. All figures in B.3–B.5 are order-of-magnitude estimates for illustration, not measured.
+
+---
+
+# PART C — the agent layer (v3, hackathon build)
+
+| Feature | Source / method | Status | Notes |
+|---|---|---|---|
+| **The agent loop** | `lib/agent/investigator.ts` — a hand-written bounded tool-calling loop over the hackathon endpoint. Goal in the system prompt; `tool_choice=auto`; `MAX_STEPS=12`. | **REAL** | The model genuinely chooses the next tool. Two runs of the same case take different paths (`docs/AGENT-TRACE.txt`). |
+| **The 6 tools** | `lib/agent/tools.ts` — `check_sensor`, `check_flow_history` (DB + `lib/stats`), `check_rainfall` (Open-Meteo), `map_recharge_area` (AWS DEM + D8), `compare_satellite` (Copernicus), `note_hypothesis` (belief state), `request_dispatch` (the gate). | **REAL** methods; 3 hit live external APIs | — |
+| **Hypothesis memory** | `ctx.hypotheses` updated by `note_hypothesis`, persisted in `escalations.trace` + `verdict`. Per-spring history in Postgres across runs. | **REAL** | — |
+| **Model routing** | `DeepSeek-V4-Flash` for the sweep + first recon steps; `gpt-5.5` once environmental evidence is in and for the case draft. Per-step model recorded in the trace. | **REAL** | The routing rule is code; which model is cheaper is real. |
+| **Scheduled trigger** | `POST /api/cron` — sweeps all sensors, opens + investigates threshold crossings. Intended for crontab; the Watch-log button calls it with `?trigger=manual`. | **REAL** endpoint; the *cron schedule itself* is not installed in the demo | Disclosed. A real deploy adds one crontab line. |
+| **Token + cost meter** | `lib/agent/cost.ts` accumulates the API's returned `usage`; applies a price table; converts to NPR. | Token counts **REAL**; **prices are public list-price estimates** | The hackathon endpoint is free. We price as if on paid infra so slide 7 has a real number. `gpt-5.5` priced at $1.25/$10 per 1M in/out; `DeepSeek-V4-Flash` at $0.10/$0.30; NPR 133 = USD 1. |
+| **Human gate** | `request_dispatch` sets `status=awaiting_approval` and returns. Filing + sending happen only via `POST /api/escalations/[id]/decision` with `decision=approve`. | **REAL** | Shown blocking, live. |
+| **Visible tool failure + retry** | `compare_satellite` returns a 504 on attempt 1 (`ctx.attempts`), then the loop retries once and logs `RETRY`. | Method **REAL**; the *attempt-1 failure is injected* | The real Sentinel Hub also 504s intermittently; the injection just guarantees it's in every demo. Disclosed in README + trace annotation. |
+| **The consequential action** | On approve: rows written to `escalations` (case filed) + `messages` (SMS), trace gains `ACTION`. | Records **REAL**; **the SMS gateway is simulated** | `lib/sms.ts` writes to a table and marks "sent". A real deploy calls Sparrow SMS / Aakash SMS (Nepal). The Nepali text is written live by `gpt-5.5`. |
+| **The Nepali SMS** | Drafted by `gpt-5.5` in `request_dispatch` (`sms_brief_ne`), Devanagari. | **REAL** model output | The +5 Resilience play — Nepali + SMS channel, demonstrated. |
+| **The bad-day path** | `?degraded=1` / "Simulate a bad day": sensor forced offline, rainfall flagged stale, `compare_satellite` returns unavailable, frontier model treated as rate-limited (routes to fallback). | **REAL** degradation logic; the *conditions are simulated* | Produces a low-confidence "field visit" case, not a confident wrong cause. |
+
+**Honest summary of Part C:** the agent loop, the tool selection, the planning, the memory, the
+routing, the trace, the token counting, the human gate and the record-writing are all real. What
+is simulated: the cron schedule is not installed (one line to add), the SMS gateway writes to a
+table instead of a telco, one satellite failure is injected for demo reliability, and the cost
+*prices* (not the token counts) are list-price estimates because the endpoint is free.

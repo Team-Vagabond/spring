@@ -1,0 +1,64 @@
+NAULA — AGENT TRACE
+case            NAULA-DRC-01-20260903
+spring          Khalanga Mul Dhara (DRC-01) · Khalanga (Darchula HQ) · 1290 m
+trigger         threshold · run KfuSXGBj
+opened          2026-09-03T21:52:35.160359+00:00
+────────────────────────────────────────────────────────────────────────
+[21:52:35]     TRIGGER  Threshold crossed on a scheduled sweep · source DRC-01 · run KfuSXGBj
+[21:52:38] s01 AGENT · DeepSeek-V4-Flash
+                     The pre-computed indicators show a real anomaly (24.5% below baseline, z=-1.61, long-term falling), but I need to verify the sensor itself is trustworthy before investigating causes. I'll start with sensor health, then flow history, rainfall, recharge area mapping, and satellite imagery — in that order
+                     tokens 1899+95
+[21:52:38] s01 TOOL     check_sensor()
+                     → sensor online · battery 92% · last reading 0h old  (170ms)
+[21:52:40] s02 AGENT · DeepSeek-V4-Flash
+                     Sensor is healthy — 92% battery, strong connectivity, reading is fresh. Sensor fault is essentially ruled out. Now I'll check the spring's own flow history to confirm this isn't normal seasonal variation.
+                     tokens 2061+88
+[21:52:41] s02 TOOL     check_flow_history({"weeks":104})
+                     → flow 5.02 L/min · -20.2% vs seasonal baseline (z=-1.38) · YoY -23.7%  (264ms)
+[21:52:43] s03 AGENT · DeepSeek-V4-Flash
+                     Interesting — the history confirms the anomaly is real (z=-1.38, -20.2% below averaged baseline). The current 5.02 L/min is well below the 104-week baseline of 6.29 L/min, and the year-on-year decline of -23.7% is severe. The short-term (8-week) trend is slightly rising (+3.6%), which could be a wet-season recovery, but the long-term picture is clearly degraded. This is not just seasonal variation. Let me check
+                     tokens 2233+138
+[21:52:45] s03 TOOL     check_rainfall()
+                     → rainfall -7.9% vs normal · monsoon -20.6% · dry spell 106d  (2006ms)
+[21:52:52] s04 AGENT · gpt-5.5-2026-04-24
+                     Rainfall may be contributing: trailing 12-month rainfall is only mildly low (-7.9%), but monsoon rainfall is substantially low (-20.6%) and the dry spell reached 106 days. Still, the discharge decline is about 20–25%, so rainfall alone may not fully explain it. I’ll record rainfall as supported but not proven, and seasonality as weak/eliminated.
+                     tokens 2121+332
+[21:52:52] s04 NOTE     note_hypothesis({"code":"H_sensor","label":"Sensor fault or bad reading","status":"eliminated","rationale":"Sensor is online with 92% battery, healthy connectivity, and a fresh reading; flow history also confirms persistent low discharge.","confidence":0.03})
+                     → H_sensor "Sensor fault or bad reading" → eliminated (3%)
+[21:52:52] s04 NOTE     note_hypothesis({"code":"H_season","label":"Normal seasonal variation","status":"weak","rationale":"Flow is 20.2% below the 104-week seasonal baseline with a -23.7% year-on-year decline, despite slight recent recovery; not normal seasonality.","confidence":0.12})
+                     → H_season "Normal seasonal variation" → weak (12%)
+[21:52:52] s04 NOTE     note_hypothesis({"code":"H_rain","label":"Rainfall deficit / weak recharge","status":"supported","rationale":"Trailing 12-month rainfall is mildly low (-7.9%), monsoon rainfall is notably low (-20.6%), and dry spell reached 106 days; this plausibly contributes but does not prove causation.","confidence":0.45})
+                     → H_rain "Rainfall deficit / weak recharge" → supported (45%)
+[21:52:56] s05 AGENT · gpt-5.5-2026-04-24
+                     Rainfall is plausible but not sufficient as the sole explanation, and the observation is trustworthy. Next I need to estimate the likely recharge area so I can test land-cover change, urbanisation, and physical disturbance hypotheses.
+                     tokens 2493+66
+[21:52:58] s05 TOOL     map_recharge_area()
+                     → catchment ≈ 6.73 km² · 1014–2977 m · estimate confidence: low (stability 25%, snapped 535 m)  (2274ms)
+[21:53:03] s06 AGENT · gpt-5.5-2026-04-24
+                     The estimated upslope recharge area is large (6.73 km²) and spans 1014–2977 m, but confidence is low because the spring had to be snapped 535 m to a drainage line and the stability score is low. I’ll use it only as a screening zone and now compare satellite imagery for vegetation loss or built-up/bare-surface expansion.
+                     tokens 2721+98
+[21:53:03] s06 TOOL     compare_satellite() ✗ 504
+                     → imagery service timed out (504)
+[21:53:10] s06 RETRY    compare_satellite()
+                     → NDVI -4.8% · built-up -1.4 pp · coverage good  (5980ms)
+[21:53:22] s07 AGENT · gpt-5.5-2026-04-24
+                     Satellite screening shows slight vegetation decline (NDVI -4.8%) but no meaningful built-up expansion; because the mapped recharge area is low-confidence, this is suggestive rather than conclusive. I’ll update land-cover and urbanisation hypotheses, keep abstraction/physical disturbance as field-verification items, then hand the case for municipal approval.
+                     tokens 2982+569
+[21:53:22] s07 NOTE     note_hypothesis({"code":"H_veg","label":"Vegetation or land-cover loss reducing recharge","status":"supported","rationale":"Satellite comparison over the estimated recharge area shows slight dry-season NDVI decline (-4.8%) from 2018/19 to 2025/26, which could modestly reduce infiltration or increase runoff; recharge outline confidence is low, so this is not proof.","confidence":0.3})
+                     → H_veg "Vegetation or land-cover loss reducing recharge" → supported (30%)
+[21:53:22] s07 NOTE     note_hypothesis({"code":"H_urban","label":"Recharge-area urbanisation / built-up expansion","status":"weak","rationale":"NDBI/built-up indicator decreased slightly (-1.4 percentage points) over the estimated recharge area; no satellite evidence of meaningful built-up expansion.","confidence":0.1})
+                     → H_urban "Recharge-area urbanisation / built-up expansion" → weak (10%)
+[21:53:22] s07 NOTE     note_hypothesis({"code":"H_abstraction","label":"Groundwater abstraction or new local water use","status":"open","rationale":"No remote-sensing tool directly checks new wells, pumping, pipe diversions, or increased withdrawals near the spring; remains possible and requires ward-level field verification.","confidence":0.25})
+                     → H_abstraction "Groundwater abstraction or new local water use" → open (25%)
+[21:53:22] s07 NOTE     note_hypothesis({"code":"H_physical","label":"Physical disturbance near source or recharge pathway","status":"open","rationale":"Remote checks do not rule out road cuts, slope failures, leakage, construction, channel changes, or source-box damage near the spring; field inspection is needed.","confidence":0.22})
+                     → H_physical "Physical disturbance near source or recharge pathway" → open (22%)
+[21:53:49] s08 AGENT · gpt-5.5-2026-04-24
+                     The evidence now ranks rainfall deficit as the most likely contributor, with minor vegetation decline possible; urbanisation and sensor fault are weak, while abstraction/physical disturbance remain untested field risks. Further remote tests are unlikely to materially change the ranking, so I’ll draft the case for the municipal water desk and ward office approval.
+                     tokens 3447+1209
+[21:53:49] s08 GATE     Primary cause: "Reduced recharge from weak recent rainfall/monsoon deficit, possibly compounded by slight vegetation decline in the estimated recharge area" (confidence 58%). Case + SMS drafted for the municipal water desk and the affected ward office — HUMAN APPROVAL REQUIRED before anything is sent or filed.
+[21:53:49]     DONE     7 steps · 1 tool failure recovered · 1 human gate · 22552 tokens · NPR 5.41 · models: DeepSeek-V4-Flash + gpt-5.5-2026-04-24
+────────────────────────────────────────────────────────────────────────
+tokens          19957 prompt + 2595 completion
+cost            NPR 5.41  (list-price estimate)
+models          DeepSeek-V4-Flash + gpt-5.5-2026-04-24
+outcome         awaiting_approval · gate pending

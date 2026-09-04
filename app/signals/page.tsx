@@ -36,21 +36,17 @@ export default function WatchLog() {
 
   async function scan() {
     setBusy(true);
-    setPhase({ text: 'Reading every sensor against its own seasonal baseline', pct: 12 });
-    const r = await api('/api/scan', { method: 'POST' });
+    setPhase({ text: 'Sweeping every sensor on the cheap model against its own seasonal baseline…', pct: 15 });
+    // /api/cron is the scheduled entry point — nobody presses a button in production.
+    // Here we call it with trigger=manual so the whole autonomous chain runs for the demo.
+    const p = api('/api/cron?trigger=manual', { method: 'POST' });
+    const tick = setInterval(() => setPhase((x) => (x && x.pct < 92 ? { ...x, pct: x.pct + 4 } : x)), 3500);
+    setPhase({ text: 'Any spring past the threshold gets a bounded investigation — it stops at the human gate.', pct: 35 });
+    const r = await p.catch(() => null);
+    clearInterval(tick);
     await load();
-    const todo = r.escalations.filter((e: any) => !e.reused);
-    if (!todo.length) setPhase({ text: 'Scan complete — nothing new to investigate', pct: 100 });
-    for (let i = 0; i < todo.length; i++) {
-      setPhase({
-        text: `Investigating ${i + 1} of ${todo.length}: satellite then-and-now, catchment trace, rainfall`,
-        pct: 25 + (i / todo.length) * 70,
-      });
-      await api(`/api/escalations/${todo[i].id}/analyze`, { method: 'POST' }).catch(() => {});
-      await load();
-    }
-    setPhase({ text: 'Watch cycle complete', pct: 100 });
-    setTimeout(() => setPhase(null), 2200);
+    setPhase({ text: r?.summary ?? 'Watch cycle complete.', pct: 100 });
+    setTimeout(() => setPhase(null), 3500);
     setBusy(false);
   }
 
@@ -67,7 +63,7 @@ export default function WatchLog() {
         <div className="relative flex items-end justify-between gap-6 flex-wrap">
           <div>
             <div className="eyebrow">Watch log</div>
-            <h1 className="display-xl mt-2">What the agent noticed</h1>
+            <h1 className="display-xl mt-1">Monitoring activity</h1>
             <p className="mt-4 font-mono text-[0.78rem] text-[var(--text-3)]">
               {counts.watched} springs watched
               <span className="mx-2 text-[var(--hairline-2)]">·</span>
@@ -76,16 +72,21 @@ export default function WatchLog() {
               <span className={counts.escalated ? 'text-[var(--clay-bright)]' : ''}>{counts.escalated} escalated</span>
             </p>
           </div>
-          <Button variant="primary" onClick={scan} disabled={busy}>
-            {busy ? 'Watching…' : 'Run watch cycle'}
-          </Button>
+          <div className="text-right">
+            <Button variant="primary" onClick={scan} disabled={busy}>
+              {busy ? 'Watching…' : 'Run scheduled sweep now'}
+            </Button>
+            <p className="text-[0.66rem] text-[var(--text-3)] mt-1.5 font-mono">
+              normally fired by cron · <span className="text-[var(--text-2)]">POST /api/cron</span>
+            </p>
+          </div>
         </div>
       </header>
 
       {phase && (
         <div className="card px-4 py-3 mt-6 rise-in">
           <p className="text-[0.83rem] text-[var(--water-bright)]">{phase.text}</p>
-          <div className="mt-2 h-[3px] rounded-full bg-white/[0.06] overflow-hidden">
+          <div className="mt-2 h-[3px] rounded-full bg-[var(--paper-3)] overflow-hidden">
             <div className="h-full bg-[var(--water)] transition-[width] duration-500 ease-in-out" style={{ width: `${phase.pct}%` }} />
           </div>
         </div>
@@ -110,7 +111,7 @@ export default function WatchLog() {
                   />
                   <button
                     onClick={() => expand(s)}
-                    className="w-full text-left rounded-xl px-4 py-3.5 transition-colors hover:bg-white/[0.025]"
+                    className="w-full text-left rounded-xl px-4 py-3.5 transition-colors hover:bg-[var(--paper-2)]"
                   >
                     <div className="flex items-center gap-2.5 flex-wrap">
                       <span className="font-mono text-[0.7rem] text-[var(--text-3)]">{ftime(s.detected_at)}</span>

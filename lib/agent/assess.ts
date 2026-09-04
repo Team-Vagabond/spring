@@ -13,8 +13,15 @@ export interface SignalResult {
   metrics: Record<string, unknown>;
 }
 
+interface AssessOut {
+  signal: SignalResult;
+  escalate: boolean;
+  model?: string;
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+}
+
 /** Analyse one sensor's flow, write a signal row, return it (+ whether to escalate). */
-export async function assessSensor(sensorId: string): Promise<{ signal: SignalResult; escalate: boolean } | null> {
+export async function assessSensor(sensorId: string): Promise<AssessOut | null> {
   const { data: sensor } = await admin.from('sensors').select('*').eq('id', sensorId).single();
   if (!sensor) return null;
 
@@ -104,12 +111,14 @@ export async function assessSensor(sensorId: string): Promise<{ signal: SignalRe
 
   let parsed: any = {};
   let model = env.llmModelFast;
+  let usage: { prompt_tokens?: number; completion_tokens?: number } | undefined;
   try {
     const res = await chat({
       model, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }],
       maxTokens: 500, temperature: 0.2, responseFormat: 'json_object',
     });
     model = res.model;
+    usage = res.usage;
     parsed = JSON.parse((res.message.content ?? '{}').replace(/^```json\s*|\s*```$/g, '').trim());
   } catch {
     parsed = {
@@ -134,7 +143,7 @@ export async function assessSensor(sensorId: string): Promise<{ signal: SignalRe
     agent_reasoning: parsed.reasoning || null,
     metrics, model,
   });
-  return { signal, escalate: decision === 'escalated' };
+  return { signal, escalate: decision === 'escalated', model, usage };
 }
 
 async function writeSignal(row: {

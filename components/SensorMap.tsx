@@ -49,15 +49,24 @@ export function SensorMap({
   return (
     <MapContainer center={DARCHULA} zoom={11} zoomControl={false} className="w-full h-full" scrollWheelZoom>
       <LayersControl position="bottomright">
-        <LayersControl.BaseLayer checked name="Satellite">
+        <LayersControl.BaseLayer checked name="Terrain">
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}"
+            attribution="Esri, National Geographic, Garmin, HERE, USGS, NASA, NOAA"
+            maxZoom={16}
+            className="map-terrain"
+          />
+        </LayersControl.BaseLayer>
+        <LayersControl.BaseLayer name="Topographic">
+          <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" attribution="© OpenTopoMap (CC-BY-SA)" maxZoom={17} />
+        </LayersControl.BaseLayer>
+        <LayersControl.BaseLayer name="Satellite">
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution="Esri, Maxar, Earthstar Geographics"
             maxZoom={18}
+            className="map-satellite"
           />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Terrain">
-          <TileLayer url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png" attribution="OpenTopoMap (CC-BY-SA)" maxZoom={17} />
         </LayersControl.BaseLayer>
       </LayersControl>
 
@@ -71,20 +80,18 @@ export function SensorMap({
           <CircleMarker
             key={s.id}
             center={[s.lat, s.lng]}
-            radius={active ? 11 : st === 'escalated' ? 8 : 6.5}
+            radius={active ? 10 : st === 'escalated' ? 7.5 : 6}
             pathOptions={{
-              color: active ? '#e9ede6' : '#04100f',
-              weight: active ? 2 : 1.5,
+              color: '#201e17',
+              weight: active ? 2.5 : 1.5,
               fillColor: color,
-              fillOpacity: st === 'inactive' ? 0.5 : 0.95,
+              fillOpacity: st === 'inactive' ? 0.55 : 1,
             }}
             eventHandlers={{ click: () => onSelect(active ? null : s.id) }}
           >
             <Tooltip direction="top" offset={[0, -6]} opacity={1}>
-              <div className="font-mono text-[0.7rem]">
-                <span className="text-white">{s.name}</span>
-                <span className="text-[var(--text-3)]"> · {s.current_flow_lpm != null ? `${s.current_flow_lpm.toFixed(1)} L/min` : 'offline'}</span>
-              </div>
+              <span className="font-semibold text-[var(--ink)]">{s.name}</span>
+              <span className="text-[var(--ink-3)]"> · {s.current_flow_lpm != null ? `${s.current_flow_lpm.toFixed(1)} L/min` : 'offline'}</span>
             </Tooltip>
           </CircleMarker>
         );

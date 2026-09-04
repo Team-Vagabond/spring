@@ -27,7 +27,7 @@ export function CompareSlider({
   return (
     <div
       ref={wrap}
-      className="group relative w-full aspect-[4/3] overflow-hidden rounded-xl border border-[var(--hairline-2)] select-none cursor-ew-resize bg-[var(--ink-2)]"
+      className="group relative w-full aspect-[4/3] overflow-hidden rounded-xl border border-[var(--hairline-2)] select-none cursor-ew-resize bg-[var(--paper-2)]"
       onMouseDown={(e) => { dragging.current = true; move(e.clientX); }}
       onMouseMove={(e) => dragging.current && move(e.clientX)}
       onMouseUp={() => (dragging.current = false)}

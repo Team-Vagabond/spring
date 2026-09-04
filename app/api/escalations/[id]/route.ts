@@ -11,5 +11,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { data: signal } = esc.signal_id
     ? await admin.from('signals').select('*').eq('id', esc.signal_id).single()
     : { data: null };
-  return json({ escalation: esc, sensor, signal });
+  const { data: messages } = await admin
+    .from('messages').select('*').eq('escalation_id', id).order('sent_at', { ascending: true });
+  return json({ escalation: esc, sensor, signal, messages: messages ?? [] });
 }

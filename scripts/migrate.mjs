@@ -14,7 +14,8 @@ function loadEnv() {
 }
 loadEnv();
 
-const sql = readFileSync(join(__dirname, '..', 'supabase', 'schema.sql'), 'utf8');
+const file = process.argv[2] || 'schema.sql';
+const sql = readFileSync(join(__dirname, '..', 'supabase', file), 'utf8');
 
 const client = new pg.Client({
   connectionString: process.env.SUPABASE_DB_URL,
@@ -23,9 +24,9 @@ const client = new pg.Client({
 
 const run = async () => {
   await client.connect();
-  console.log('connected, applying schema...');
+  console.log(`connected, applying ${file}...`);
   await client.query(sql);
-  console.log('schema applied ok');
+  console.log('applied ok');
   await client.end();
 };
 

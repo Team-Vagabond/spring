@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Naula — Solution Sheet</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  :root {
+    --ink:#0b1512; --water:#2c7e81; --clay:#a3402f; --moss:#5f7a2e; --ochre:#b06f2e;
+    --line:#c9c0ab; --paper:#f3efe4; --dim:#5a5647;
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:#e7e2d4; color:var(--ink);
+    font:12px/1.42 "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+  .sheet { background:var(--paper); width:186mm; margin:8px auto; padding:12mm 12mm 10mm;
+    box-shadow:0 4px 30px rgba(0,0,0,.15); }
+  @media print { body{background:#fff;} .sheet{box-shadow:none;margin:0;width:auto;padding:0;} }
+  h1 { font:600 22px/1.1 "Fraunces", Georgia, serif; margin:0; letter-spacing:-.01em; }
+  .tag { font:600 8.5px/1 "IBM Plex Sans"; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); }
+  .one { font:400 15px/1.4 "Fraunces", Georgia, serif; margin:6px 0 0; }
+  .one b { color:var(--water); font-weight:600; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:6mm 8mm; margin-top:5mm; }
+  section { break-inside:avoid; }
+  h2 { font:600 8.5px/1 "IBM Plex Sans"; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--dim); margin:0 0 3px; border-bottom:1px solid var(--line); padding-bottom:3px; }
+  p { margin:3px 0; }
+  .mono { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:10px; }
+  ul { margin:3px 0; padding-left:14px; }
+  li { margin:1.5px 0; }
+  .arch { font-family:"IBM Plex Mono", monospace; font-size:8.3px; line-height:1.35;
+    white-space:pre; background:#ece6d6; border:1px solid var(--line); padding:5px 7px; border-radius:4px; overflow:hidden; }
+  .rm { display:grid; grid-template-columns:1fr 1fr; gap:0 6mm; font-size:10px; }
+  .rm b { color:var(--moss); } .mk b { color:var(--ochre); }
+  .foot { margin-top:5mm; border-top:1px solid var(--line); padding-top:3mm;
+    font-size:8.5px; color:var(--dim); display:flex; justify-content:space-between; }
+  .pill { display:inline-block; border:1px solid var(--line); border-radius:20px; padding:1px 7px; font-size:9px; margin:2px 3px 0 0; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="tag">Startup Innovation Hackathon Vol. III · Solution Sheet</div>
+  <h1>Naula <span style="font:400 13px 'IBM Plex Mono';color:var(--dim)">/ नौला — a spring source</span></h1>
+  <p class="one">Our agent helps <b>a rural municipality's water desk in Darchula</b> work out
+  <b>why a mountain spring is quietly failing and what to do</b> — without <b>sending a
+  hydrogeologist to every spring, or waiting months for anyone to notice</b>.</p>
+
+  <div class="grid">
+
+    <section>
+      <h2>The user, named</h2>
+      <p><b>Ranju Bhatta</b>, the WASH focal person at a rural municipality office — one person,
+      part-time on water, no GIS or hydrogeology training, responsible for 50–250 springs she
+      cannot possibly all visit. Today a village complains, months after the decline started;
+      she has no way to triage or to arrive at a spring already knowing what changed around it.</p>
+    </section>
+
+    <section>
+      <h2>What the agent does, unasked</h2>
+      <p>A cron sweep checks every sensor against its own seasonal baseline. The moment one shows
+      a sustained decline, an agent — <b>with no human in the loop</b> — investigates: rainfall,
+      the recharge area traced from an elevation model, a then-vs-now satellite comparison of that
+      area, competing hypotheses weighed and re-weighed. It then drafts a case and a Nepali SMS
+      brief and <b>stops</b> for a coordinator to approve.</p>
+    </section>
+
+    <section style="grid-column:1/-1">
+      <h2>Architecture</h2>
+      <div class="arch">cron / button ─▶ /api/cron  monitoring sweep · DeepSeek-V4-Flash · 1 call/sensor · pure-code anomaly maths
+                     │  spring crosses threshold
+                     ▼
+   BOUNDED AGENT LOOP  (lib/agent/investigator.ts · MAX_STEPS 12 · token+NPR meter · structured trace)
+     goal in ─▶ model picks the next tool:
+        check_sensor   check_flow_history   check_rainfall→Open-Meteo   map_recharge_area→AWS DEM+D8
+        compare_satellite→Copernicus Sentinel-2      note_hypothesis (memory)      request_dispatch ─▶ ★GATE★
+     routing: Flash for recon → gpt-5.5 once evidence competes   ·   visible tool failure + retry
+                     │  status = awaiting_approval
+                     ▼
+   HUMAN  /api/escalations/[id]/decision   approve │ reject │ request more
+                     │ approve
+                     ▼
+   CONSEQUENCE   case filed with municipal water & sanitation section  ·  SMS brief sent (Nepali) to ward
+                 coordinator + committee  ·  post-approval monitoring continues</div>
+    </section>
+
+    <section>
+      <h2>Tools &amp; models</h2>
+      <p><b>Models:</b> <span class="mono">DeepSeek-V4-Flash</span> for the sweep + recon (≈90% of
+      calls), <span class="mono">gpt-5.5</span> for the judgement once hypotheses compete. A full
+      6-spring daily cycle costs <b>~NPR 14</b>; a quiet day <b>~NPR 0.03</b>.</p>
+      <p><b>External tools:</b> Open-Meteo (ERA5-Land rainfall), AWS Terrain Tiles (SRTM DEM),
+      Copernicus Sentinel Hub (Sentinel-2 L2A), Supabase Postgres, a simulated SMS gateway.</p>
+    </section>
+
+    <section>
+      <h2>Human checkpoint</h2>
+      <p>The agent may <b>never</b> file a case or send a message itself. <span class="mono">request_dispatch</span>
+      drafts them and the loop halts (<span class="mono">awaiting_approval</span>). Filing and
+      sending happen only via an explicit human <span class="mono">approve</span>. Loop capped at
+      12 steps; nothing is ever left running. Shown blocking, live, in the demo.</p>
+    </section>
+
+    <section style="grid-column:1/-1">
+      <h2>The bad day</h2>
+      <p><i>The week the rain does not stop.</i> Ten days of cloud — Sentinel-2 returns nothing usable.
+      The worst-hit spring's sensor has been underwater for two days and is offline. The shared LLM
+      key is rate-limited by fifteen teams. Open-Meteo's grid is four days behind. Naula does not
+      bluff: the sweep still runs on the cheap model; the investigation routes fully to the fallback
+      model, treats the offline sensor as <b>status UNKNOWN</b> (not a failure), flags stale rainfall,
+      records that satellite is unavailable, and — unable to separate rainfall deficit from
+      abstraction or damage without a field check — drafts a <b>low-confidence</b> case whose
+      recommendation is <i>"send someone to look"</i>. The Nepali SMS still drafts and queues for
+      approval. Every degradation is written into the trace. <span class="mono">Simulate a bad day</span> runs exactly this.</p>
+    </section>
+
+    <section>
+      <h2>Real</h2>
+      <div class="rm">
+        <div>
+          <p>Agent loop: tool choice, planning, hypothesis memory, retry, routing, bounded steps</p>
+          <p>Sentinel-2 imagery + NDVI/NDBI (Copernicus)</p>
+          <p>SRTM DEM + D8 watershed trace (AWS)</p>
+        </div>
+        <div>
+          <p>25 yr rainfall (Open-Meteo / ERA5-Land)</p>
+          <p>Token accounting → NPR cost</p>
+          <p>Postgres persistence · the trace · the human gate</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="mk">
+      <h2>Mocked — disclosed</h2>
+      <p><b>Flow-sensor hardware &amp; readings</b> — no sensors deployed; flow is a seasonal model
+      + a per-spring decline scenario. The decline is real in the numbers and the maths really
+      detects it; the numbers are synthetic.</p>
+      <p><b>SMS gateway</b> — messages written to a table, marked "sent" (real deployment: Sparrow/Aakash SMS).</p>
+      <p><b>One injected transient failure</b> in <span class="mono">compare_satellite</span> so the retry is always visible.</p>
+      <p><b>List-price cost table</b> — the hackathon endpoint is free; we price as if on public infra.</p>
+    </section>
+
+  </div>
+
+  <div class="foot">
+    <span>Deliverables: working system · agent trace (<span class="mono">/api/escalations/[id]/trace</span>) · this sheet · 8-slide deck · repo · 60 s video</span>
+    <span>Next.js · Supabase · gpt-5.5 + DeepSeek-V4-Flash · Copernicus · Open-Meteo</span>
+  </div>
+
+</div>
+</body>
+</html>
