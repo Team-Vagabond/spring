@@ -3,6 +3,7 @@ import { env } from '../env';
 import { chat, type ChatMessage } from './llm';
 import { addUsage, newMeter, nprStr } from './cost';
 import { AUTONOMOUS_TOOLS, TOOL_DEFS, runTool, type Ctx } from './tools';
+import { FIELD_NOTES } from '../synthetic';
 
 const MAX_STEPS = 12;
 
@@ -34,7 +35,7 @@ evidence to gather next.
 The spring:
 - ${sensor.name} (${sensor.id}), ${sensor.village}, ${sensor.elevation_m} m
 - expected discharge ~${sensor.expected_flow_lpm} L/min
-
+${FIELD_NOTES[sensor.id] ? `\nLOCAL CONTEXT ON FILE (a lead to VERIFY against your evidence, not proof of cause):\n- ${FIELD_NOTES[sensor.id]}\n` : ''}
 HOW TO WORK
 1. First establish that the observation is trustworthy (check_sensor), then whether this is just
    normal seasonal variation (check_flow_history).
@@ -174,7 +175,7 @@ export async function runInvestigation(
           actor: 'agent',
           tool: 'request_dispatch',
           confidence: Number(args.confidence),
-          content: `Primary cause: "${args.primary_cause}" (confidence ${Math.round((Number(args.confidence) || 0) * 100)}%). Case + SMS drafted for the municipal water desk and the affected ward office — HUMAN APPROVAL REQUIRED before anything is sent or filed.`,
+          content: `Primary cause: "${args.primary_cause}". Case drafted for the municipal water desk — HUMAN APPROVAL REQUIRED before it is filed.`,
         });
         messages.push({ role: 'tool', tool_call_id: tc.id, name: tc.function.name, content: JSON.stringify({ ok: true, status: 'awaiting human approval' }) });
         status = 'awaiting_approval';
@@ -278,7 +279,7 @@ export async function runInvestigation(
     confidence: Number(d.confidence) || null,
     degraded,
     gate_status: status === 'awaiting_approval' ? 'pending' : status === 'error' ? 'none' : 'pending',
-    gate_action: 'Open a case in the municipal water & sanitation register and send the SMS brief to the ward office and the municipal water section',
+    gate_action: 'Open a case in the municipal water & sanitation register for the ward office to act on.',
     dispatch: { ...d, case_ref: caseRef, recipients },
     rainfall: ctx.evidence.rainfall ?? null,
     recharge: ctx.evidence.recharge ?? null,

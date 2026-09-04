@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
-import { Source_Serif_4, Public_Sans, IBM_Plex_Mono } from 'next/font/google';
+import { Fraunces, Instrument_Sans, IBM_Plex_Mono } from 'next/font/google';
 import 'leaflet/dist/leaflet.css';
 import './globals.css';
 import { SiteHeader } from '@/components/SiteHeader';
 
-const serif = Source_Serif_4({ subsets: ['latin'], weight: ['400', '500', '600'], style: ['normal', 'italic'], display: 'swap', variable: '--font-serif' });
-const sans = Public_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', variable: '--font-sans' });
+const serif = Fraunces({ subsets: ['latin'], weight: ['400', '500', '600', '700'], style: ['normal', 'italic'], display: 'swap', variable: '--font-serif' });
+const sans = Instrument_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], display: 'swap', variable: '--font-sans' });
 const mono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500'], display: 'swap', variable: '--font-mono' });
 
 export const metadata: Metadata = {

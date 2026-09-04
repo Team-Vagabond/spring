@@ -53,7 +53,7 @@ export async function trueColorPng(
         dataFilter: {
           timeRange: { from: `${from}T00:00:00Z`, to: `${to}T23:59:59Z` },
           mosaickingOrder: 'leastCC',
-          maxCloudCoverage: 50,
+          maxCloudCoverage: 25,
         },
       }],
     },

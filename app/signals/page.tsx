@@ -29,7 +29,10 @@ export default function WatchLog() {
     if (!series[s.sensor_id]) {
       try {
         const d = await api(`/api/sensors/${s.sensor_id}`);
-        setSeries((p) => ({ ...p, [s.sensor_id]: d.readings.slice(-26).map((r: any) => r.flow_lpm) }));
+        // full record, lightly downsampled — the multi-year trend, not a 26-week window
+        const all: number[] = d.readings.map((r: any) => r.flow_lpm);
+        const step = Math.max(1, Math.floor(all.length / 80));
+        setSeries((p) => ({ ...p, [s.sensor_id]: all.filter((_, i) => i % step === 0) }));
       } catch { /* ignore */ }
     }
   }
@@ -136,8 +139,8 @@ export default function WatchLog() {
                           <div className="mt-4 flex items-end gap-6 flex-wrap">
                             {series[s.sensor_id]?.length > 1 && (
                               <div>
-                                <div className="eyebrow mb-1">flow · last 26 weeks</div>
-                                <Sparkline data={series[s.sensor_id]} width={160} height={34} stroke="var(--water)" />
+                                <div className="eyebrow mb-1">flow · full record</div>
+                                <Sparkline data={series[s.sensor_id]} width={200} height={38} stroke={s.decision === 'escalated' ? 'var(--clay)' : 'var(--water)'} />
                               </div>
                             )}
                             <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5 font-mono text-[0.75rem]">

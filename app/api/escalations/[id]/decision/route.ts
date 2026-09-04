@@ -1,12 +1,11 @@
 import { admin } from '@/lib/db';
 import { bad, json } from '@/lib/http';
-import { sendBrief } from '@/lib/sms';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * The human checkpoint. The agent has drafted a case + SMS brief and stopped.
- * Nothing leaves the building until someone at the municipal water desk approves here.
+ * The human checkpoint. The agent has drafted a case and stopped. Nothing is filed
+ * until someone at the municipal water desk accepts it here.
  * body: { decision: 'approve' | 'reject' | 'request_more', by?: string, note?: string }
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -35,24 +34,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return json({ ok: true, decision });
   }
 
-  // approve → the consequential action
+  // approve → the consequential action: the case is filed in the register
   const d = esc.dispatch ?? {};
-  const recipients = d.recipients ?? [];
   const caseRef = d.case_ref ?? `NAULA-${esc.sensor_id}`;
 
-  trace.push({ t: at, kind: 'decision', actor: 'coordinator', content: `APPROVED by ${by}. Filing case ${caseRef} and sending the SMS brief.` });
-
-  let sent = 0;
-  if (d.sms_brief_ne && recipients.length) {
-    const r = await sendBrief(id, recipients, d.sms_brief_ne, d.sms_brief_en ?? d.sms_brief_ne);
-    sent = r.sent;
-  }
-
+  trace.push({ t: at, kind: 'decision', actor: 'coordinator', content: `ACCEPTED by ${by}. Filing case ${caseRef} in the register.` });
   trace.push({
     t: new Date().toISOString(),
     kind: 'action',
     actor: 'system',
-    content: `Case ${caseRef} opened in the municipal water & sanitation register. SMS brief sent to ${sent} recipient${sent === 1 ? '' : 's'} in Nepali. Post-approval monitoring of ${esc.sensor_id} continues.`,
+    content: `Case ${caseRef} opened in the municipal water & sanitation register. Post-approval monitoring of ${esc.sensor_id} continues.`,
   });
 
   await admin.from('escalations').update({
@@ -63,5 +54,5 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     trace,
   }).eq('id', id);
 
-  return json({ ok: true, decision, case_ref: caseRef, sms_sent: sent });
+  return json({ ok: true, decision, case_ref: caseRef });
 }

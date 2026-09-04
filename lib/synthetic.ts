@@ -25,7 +25,18 @@ export const SENSOR_SEEDS: SensorSeed[] = [
   { id: 'DRC-04', name: 'Latinath Dhara', village: 'Latinath', lat: 29.7585, lng: 80.6120, elevation_m: 1610, expected_flow_lpm: 4.4, scenario: 'irregular', active: true, installed_on: '2024-02-11' },
   { id: 'DRC-05', name: 'Dattu Kuwa', village: 'Dattu', lat: 29.8030, lng: 80.5210, elevation_m: 1975, expected_flow_lpm: 8.1, scenario: 'recovering', active: true, installed_on: '2023-03-28' },
   { id: 'DRC-06', name: 'Sitola Mul', village: 'Sitola', lat: 29.6660, lng: 80.5560, elevation_m: 1425, expected_flow_lpm: 5.8, scenario: 'stable', active: false, installed_on: '2024-01-09' },
+  // DRC-07: real recharge area shows NDVI -12% (vegetation cover fell markedly) with
+  // no built-up rise and near-normal annual rainfall — a genuine land-cover-driven decline.
+  { id: 'DRC-07', name: 'Ghusa Mul Dhara', village: 'Ghusa (upper Dattu)', lat: 29.8200, lng: 80.5400, elevation_m: 1180, expected_flow_lpm: 5.6, scenario: 'declining', active: true, installed_on: '2023-07-15' },
 ];
+
+// Real-world local context a municipal water desk would already hold — community
+// reports, ward observations. Given to the agent as a lead to VERIFY, never as a
+// verdict; it still weighs this against the live satellite / rainfall evidence.
+export const FIELD_NOTES: Record<string, string> = {
+  'DRC-07':
+    'Ward office community report (last two years): households on the upper slope above this spring cleared a stand of forest and broke new terraced farmland there. No new houses, roads, or construction have been reported anywhere in the catchment.',
+};
 
 export function generateFlowHistory(seed: SensorSeed, weeks = 130): { ts: string; flow_lpm: number }[] {
   const rnd = mulberry32(hashSeed(seed.id));

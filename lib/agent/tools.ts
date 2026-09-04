@@ -25,13 +25,20 @@ export interface Ctx {
   dispatch?: any; // set when request_dispatch is called (the gate)
 }
 
-const PAST = { from: '2018-10-01', to: '2019-05-31' };
-function recentWindow() {
-  const y = new Date().getUTCFullYear();
-  const m = new Date().getUTCMonth() + 1;
-  const endY = m >= 6 ? y : y - 1;
-  return { from: `${endY - 1}-10-01`, to: `${endY}-05-31` };
+// Two windows, on purpose:
+//  · IMAGES use a tight post-monsoon window (Oct–late Nov) — greenest, clearest,
+//    high sun — so the before/after true-colour pair is bright and comparable.
+//  · NDVI uses the whole dry season (Oct–May) — the high Himalaya is often cloud/
+//    snow-covered post-monsoon, so a wider window is needed for enough clear pixels
+//    for a stable statistic.
+const IMG_PAST = { from: '2018-10-01', to: '2018-11-25' };
+const NDVI_PAST = { from: '2018-10-01', to: '2019-05-31' };
+function postMonsoonYear() {
+  const d = new Date();
+  return d.getUTCMonth() + 1 >= 12 ? d.getUTCFullYear() : d.getUTCFullYear() - 1;
 }
+function imgRecent() { const y = postMonsoonYear(); return { from: `${y}-10-01`, to: `${y}-11-25` }; }
+function ndviRecent() { const y = postMonsoonYear(); return { from: `${y}-10-01`, to: `${y + 1}-05-31` }; }
 
 export const TOOL_DEFS: ToolDef[] = [
   {
@@ -134,10 +141,8 @@ export const TOOL_DEFS: ToolDef[] = [
             items: { type: 'object', properties: { action: { type: 'string' }, why: { type: 'string' } }, required: ['action', 'why'] },
           },
           uncertainty: { type: 'string', description: 'what still needs field verification' },
-          sms_brief_ne: { type: 'string', description: 'A <=320-character SMS in NEPALI (Devanagari) for the ward office and municipal water section: spring name, how far below normal, the most likely cause in plain words, and the single recommended next step. No jargon.' },
-          sms_brief_en: { type: 'string', description: 'The same brief in English.' },
         },
-        required: ['primary_cause', 'confidence', 'ranked_causes', 'explanation', 'uncertainty', 'sms_brief_ne', 'sms_brief_en'],
+        required: ['primary_cause', 'confidence', 'ranked_causes', 'explanation', 'uncertainty'],
         additionalProperties: false,
       },
     },
@@ -249,14 +254,11 @@ export async function runTool(name: string, args: any, ctx: Ctx): Promise<ToolRe
       ctx.evidence.recharge = out;
       return {
         ok: true,
-        summary: `catchment ≈ ${shed.area_km2} km² · ${shed.elev_min_m}–${shed.elev_max_m} m · estimate confidence: ${shed.confidence} (stability ${Math.round(shed.stability * 100)}%, snapped ${shed.snap_distance_m} m)${shed.edge_truncated ? ' · reaches analysis edge' : ''}`,
+        summary: `catchment ≈ ${shed.area_km2} km² · ${shed.elev_min_m}–${shed.elev_max_m} m${shed.edge_truncated ? ' · reaches analysis edge' : ''}`,
         data: {
           area_km2: out.area_km2, elev_min_m: out.elev_min_m, elev_max_m: out.elev_max_m,
           edge_truncated: out.edge_truncated, method: out.method,
-          estimate_confidence: out.confidence,
-          stability_iou: out.stability,
-          snap_distance_m: out.snap_distance_m,
-          confidence_note: 'This confidence is about how much to trust THIS topographic outline (there is no surveyed springshed to check against). Factor it into your own confidence and say a hydrogeologist must confirm the true recharge area.',
+          note: 'A topographic surface catchment. The true groundwater recharge area follows subsurface geology and needs a hydrogeologist to confirm.',
         },
       };
     }
@@ -277,11 +279,12 @@ export async function runTool(name: string, args: any, ctx: Ctx): Promise<ToolRe
         return { ok: false, summary: 'imagery service timed out (504)', data: { error: 'HTTP 504 from imagery service' }, error: '504', retryable: true };
       }
       const aoi = ctx.evidence.recharge.aoi as BBox;
-      const rec = recentWindow();
+      const imgRec = imgRecent();
+      const ndviRec = ndviRecent();
       const [cmp, pastPng, recentPng] = await Promise.all([
-        compareEras(aoi, PAST.from, PAST.to, rec.from, rec.to),
-        trueColorPng(aoi, PAST.from, PAST.to, 640).catch(() => null),
-        trueColorPng(aoi, rec.from, rec.to, 640).catch(() => null),
+        compareEras(aoi, NDVI_PAST.from, NDVI_PAST.to, ndviRec.from, ndviRec.to),
+        trueColorPng(aoi, IMG_PAST.from, IMG_PAST.to, 768).catch(() => null),
+        trueColorPng(aoi, imgRec.from, imgRec.to, 768).catch(() => null),
       ]);
       const dir = path.join(process.cwd(), 'public', 'sat', ctx.escalationId);
       await mkdir(dir, { recursive: true });
@@ -289,12 +292,19 @@ export async function runTool(name: string, args: any, ctx: Ctx): Promise<ToolRe
       let recentUrl: string | null = null;
       if (pastPng) { await writeFile(path.join(dir, 'past.png'), pastPng); pastUrl = `/sat/${ctx.escalationId}/past.png`; }
       if (recentPng) { await writeFile(path.join(dir, 'recent.png'), recentPng); recentUrl = `/sat/${ctx.escalationId}/recent.png`; }
-      const out = { ...cmp, past_image: pastUrl, recent_image: recentUrl };
+      const out = {
+        ...cmp,
+        past_image: pastUrl,
+        recent_image: recentUrl,
+        // the images shown are the tight post-monsoon pair; label them as such
+        past_period: 'Oct–Nov 2018',
+        recent_period: `Oct–Nov ${postMonsoonYear()}`,
+      };
       ctx.evidence.satellite = out;
       return {
         ok: true,
         summary: `NDVI ${cmp.ndvi_change_pct}% · built-up ${cmp.builtup_change_pp} pp · coverage ${cmp.valid_coverage}`,
-        data: { ndvi_past: cmp.ndvi_past, ndvi_recent: cmp.ndvi_recent, ndvi_change_pct: cmp.ndvi_change_pct, ndbi_past: cmp.ndbi_past, ndbi_recent: cmp.ndbi_recent, builtup_change_pp: cmp.builtup_change_pp, valid_coverage: cmp.valid_coverage, past_period: cmp.past_period, recent_period: cmp.recent_period, interpretation: cmp.interpretation },
+        data: { ndvi_past: cmp.ndvi_past, ndvi_recent: cmp.ndvi_recent, ndvi_change_pct: cmp.ndvi_change_pct, ndbi_past: cmp.ndbi_past, ndbi_recent: cmp.ndbi_recent, builtup_change_pp: cmp.builtup_change_pp, valid_coverage: cmp.valid_coverage, past_period: 'Oct–Nov 2018', recent_period: `Oct–Nov ${postMonsoonYear()}`, interpretation: cmp.interpretation },
       };
     }
 
